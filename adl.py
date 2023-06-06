@@ -69,16 +69,28 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[dict[pd.Timestamp]]:
     night_start, night_end = clustering_day_night(hours)
 
     datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=dates[1] + datetime.timedelta(days=1))
-    night = {
+    night_time = {
         'start': datetime_range[night_start],
         'end': datetime_range[night_end]
     }
 
-    day = {
+    day_time = {
         'start': datetime_range[night_end],
         'end': datetime_range[night_start] + datetime.timedelta(days=1)
     }
 
-    return day, night
+    return day_time, night_time
 
+def get_rel_df(df: pd.DataFrame, time: pd.Timestamp) -> pd.DataFrame:
+    rel_time = time['start'] < df['start'] < time['end']
+    df_rel_time = df.loc[rel_time]
+    df_rel_time['total_time'] = (df_rel_time['stop'] - df_rel_time['start']).astype('timedelta64[m]')
+    return df_rel_time
 
+def get_sleep_duration(df: pd.DataFrame, time: pd.Timestamp) -> float:
+    df_rel_time = get_rel_df(df, time)
+    return df_rel_time['total_time'].sum() / 60.0
+
+def get_restlessness(df: pd.DataFrame, night_time: pd.Timestamp) -> float:
+    df_rel_time = get_rel_df(df, night_time)
+    return (df_rel_time['data'] * df_rel_time['total_time']).sum() / df_rel_time['total_time'].sum()
