@@ -96,3 +96,16 @@ def get_sleep_duration(df: pd.DataFrame, time: pd.Timestamp) -> float:
 def get_restlessness(df: pd.DataFrame, night_time: pd.Timestamp) -> float:
     df_rel_time = get_rel_df(df, night_time)
     return (df_rel_time['data'] * df_rel_time['total_time']).sum() / df_rel_time['total_time'].sum()
+
+
+def get_wake_duration(df: pd.DataFrame, time: pd.Timestamp) -> float:
+    df_rel_time = get_rel_df(df, time)
+    total_time = (time['end'] - time['start']).astype('timedelta64[m]')
+    return (total_time - df_rel_time['total_time'].sum()) / 60.0
+
+
+def get_out_of_bed_number(df: pd.DataFrame, time: pd.Timestamp) -> tuple[int, float]:
+    df_rel_time = get_rel_df(df, time)
+    df_rel_time = df_rel_time.loc[df_rel_time['location'] != 'Bed']
+    return len(df_rel_time), df_rel_time['total_time'].sum() / 60.0
+    
