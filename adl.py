@@ -50,7 +50,6 @@ def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int]:
     for night_start in start_awake_indices:
         if np.all(hours[max(0, night_start - MAX_AWAKE): night_start+1] == AWAKE):
             break
-    
     for night_end in end_awake_indices:
         if np.all(hours[night_end: min(night_end+MAX_AWAKE+1, len(hours) - 1)] == AWAKE):
             break
@@ -81,15 +80,18 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[dict[pd.Timestamp]]:
 
     return day_time, night_time
 
+
 def get_rel_df(df: pd.DataFrame, time: pd.Timestamp) -> pd.DataFrame:
     rel_time = time['start'] < df['start'] < time['end']
     df_rel_time = df.loc[rel_time]
     df_rel_time['total_time'] = (df_rel_time['stop'] - df_rel_time['start']).astype('timedelta64[m]')
     return df_rel_time
 
+
 def get_sleep_duration(df: pd.DataFrame, time: pd.Timestamp) -> float:
     df_rel_time = get_rel_df(df, time)
     return df_rel_time['total_time'].sum() / 60.0
+
 
 def get_restlessness(df: pd.DataFrame, night_time: pd.Timestamp) -> float:
     df_rel_time = get_rel_df(df, night_time)
