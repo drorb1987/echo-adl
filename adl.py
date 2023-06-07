@@ -56,7 +56,7 @@ def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int]:
     return night_start, night_end
 
 
-def get_day_night_times(df: pd.DataFrame) -> tuple[dict[pd.Timestamp]]:
+def get_day_night_times(df: pd.DataFrame) -> tuple[dict[str, pd.Timestamp]]:
 
     validate_df(df)
 
@@ -108,4 +108,3 @@ def get_out_of_bed_number(df: pd.DataFrame, time: pd.Timestamp) -> tuple[int, fl
     df_rel_time = get_rel_df(df, time)
     df_rel_time = df_rel_time.loc[df_rel_time['location'] != 'Bed']
     return len(df_rel_time), df_rel_time['total_time'].sum() / 60.0
-    
