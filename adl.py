@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
+from collections import Counter
 
 AWAKE = 0
 SLEEP = 1
@@ -10,6 +11,7 @@ SPLITS_PER_HOUR = 2
 NUM_DAYS = 2
 
 MAX_AWAKE = 3
+
 
 
 def validate_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,6 +63,7 @@ def day_night_update_df(df, time_dict):
     for day_or_night in time_dict:
         rel_time = (df['start'] >= time_dict[day_or_night]['start']) & (df['stop'] <= time_dict[day_or_night]['end'])
         df.loc[rel_time, 'day_or_night'] = day_or_night
+    df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[m]')
     return df
 
 
@@ -75,7 +78,6 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[dict[str, 
     """
 
     df = validate_df(df)
-    df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[m]')
 
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     assert len(dates) <= 2, "There is more than 2 days"
@@ -106,6 +108,11 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[dict[str, 
     return df, time_dict
 
 
+def get_relevant_df(df: pd.DataFrame, day_or_night: str) -> pd.DataFrame:
+    assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
+    return df[df['day_or_night'] == day_or_night]
+
+
 def get_sleep_duration(df: pd.DataFrame, day_or_night: str) -> float:
     """Get the sleep duration on day/night
 
@@ -116,8 +123,7 @@ def get_sleep_duration(df: pd.DataFrame, day_or_night: str) -> float:
     Returns:
         float: The sleep duration in hours
     """
-    assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
-    rel_df = df[df['day_or_night'] == day_or_night]
+    rel_df = get_relevant_df(df, day_or_night)
     return rel_df['total_time'].sum() / 60.0
 
 
@@ -131,22 +137,45 @@ def get_restlessness(df: pd.DataFrame, day_or_night: str) -> float:
     Returns:
         float: average restlessness
     """
-    assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
-    rel_df = df[df['day_or_night'] == day_or_night]
+    rel_df = get_relevant_df(df, day_or_night)
     return (rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum()
 
 
 
-def get_out_of_bed_number(df: pd.DataFrame, time: pd.Timestamp) -> tuple[int, float]:
-    df_rel_time = df_rel_time.loc[df_rel_time['location'] != 'Bed']
-    return len(df_rel_time), df_rel_time['total_time'].sum() / 60.0
+def get_out_of_bed_number(df: pd.DataFrame, day_or_night: str) -> tuple[int, float]:
+    """Get the number of out of bed and the duration
+
+    Args:
+        df (pd.DataFrame): location dataframe
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        tuple[int, float]: _description_
+    """
+    rel_df = get_relevant_df(df, day_or_night)
+    rel_df = rel_df[rel_df['location'] != 'Bed']
+    return len(rel_df), rel_df['total_time'].sum() / 60.0
+
+
+def get_location_distribution(df: pd.DataFrame, day_or_night: str) -> Counter:
+    """Get location distribution during day/night
+
+    Args:
+        df (pd.DataFrame): location dataframe
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        Counter: counter for location distribution
+    """
+    rel_df = get_relevant_df(df, day_or_night)
+    return Counter(rel_df['location'])
 
 
 if __name__ == '__main__':
     sleep_sessions = {
     'start': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
     'stop': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00'],
-    'restless': ['0.8', '0.4', '0.9', '0.2']
+    'restless': [0.8, 0.4, 0.9, 0.2]
     }
 
     sleep_df = pd.DataFrame(sleep_sessions)
@@ -155,3 +184,14 @@ if __name__ == '__main__':
     day_sleep_duration = get_sleep_duration(sleep_df, 'Day')
     night_restlessness = get_restlessness(sleep_df, 'Night')
     day_restlessness = get_restlessness(sleep_df, 'Day')
+
+    location_data = {
+        'start': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
+        'stop': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00'],
+        'location': ['Kitchen', 'Bed', 'Bedroom', 'Entry']
+    }
+    location_df = pd.DataFrame(location_data)
+    location_df = validate_df(location_df)
+    location_df = day_night_update_df(location_df, time_dict)
+    night_out_of_bed_number, night_out_of_bed_duration = get_out_of_bed_number(location_df, 'Night')
+    night_location_distribution = get_location_distribution(location_df, 'Night')
