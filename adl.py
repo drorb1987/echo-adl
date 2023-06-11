@@ -18,8 +18,8 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     for t in ['start', 'stop', 'time']:
         if t in df:
             df[t] = pd.to_datetime(df[t])
-        if t is not 'stop':
-            df = df.sort_values(t)
+            if t is not 'stop':
+                df = df.sort_values(t)
     return df
 
 
@@ -68,7 +68,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict[str, dict[str, pd.Time
         rel_time = (df[start] >= time_dict[day_or_night]['start']) & (df[stop] <= time_dict[day_or_night]['end'])
         df.loc[rel_time, 'day_or_night'] = day_or_night
     if 'start' in df:
-        df['total_time'] = ((df['stop'] - df['start']) / 60.0).astype('timedelta64[m]')
+        df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[m]') / 60.0
     return df
 
 
@@ -204,7 +204,7 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
         float: returns total alone time
     """
     rel_df = get_relevant_df(df, day_or_night)
-    total_time_of_day = ((time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']) / 60.0).astype('timedelta64[m]')
+    total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
     return total_time_of_day - rel_df['total_time'].sum()
 
 
