@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
+from collections import Counter
 
 AWAKE = 0
 SLEEP = 1
@@ -145,7 +146,6 @@ def get_restlessness(df: pd.DataFrame, day_or_night: str) -> float:
     return (rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum()
 
 
-
 def get_out_of_bed_number(df: pd.DataFrame, day_or_night: str) -> tuple[int, float]:
     """Get the number of out of bed and the duration
 
@@ -177,10 +177,49 @@ def get_location_distribution(df: pd.DataFrame, day_or_night: str) -> dict[str, 
         location_dist.pop('Bed')
     return location_dist
 
+
 def get_average_respiration(df: pd.DataFrame, day_or_night: str) -> float:
+    """Get average respiration during day/night
+
+    Args:
+        df (pd.DataFrame): respiration dataframe
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        float: returns an average respiration
+    """
     rel_df = get_relevant_df(df, day_or_night)
     return rel_df['respiration'].apply('average')
 
+
+def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
+    """Get total alone time during day/night
+
+    Args:
+        df (pd.DataFrame): visitors dataframe
+        time_dict (dict): a dictionary for the start time and and time for day/night
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        float: returns total alone time
+    """
+    rel_df = get_relevant_df(df, day_or_night)
+    total_time_of_day = ((time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']) / 60.0).astype('timedelta64[m]')
+    return total_time_of_day - rel_df['total_time'].sum()
+
+
+def get_number_events(df: pd.DataFrame, day_or_night: str) -> Counter:
+    """Get number of events during day/night
+
+    Args:
+        df (pd.DataFrame): events dataframe
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        Counter: returns counter that counts the number of each event
+    """
+    rel_df = get_relevant_df(df, day_or_night)
+    return Counter(rel_df['event'])
 
 
 if __name__ == '__main__':
@@ -222,4 +261,18 @@ if __name__ == '__main__':
         'VisitorsIn': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
         'VisitorsOut': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00']
     }
-    visitors_df = pd.DataFrame(visitors_data)
+    mapper_visitors = {'VisitorsIn': 'start', 'VisitorsOut': 'stop'}
+    visitors_df = pd.DataFrame(visitors_data).rename(columns=mapper_visitors)
+    visitors_df = validate_df(visitors_df)
+    visitors_df = day_night_update_df(visitors_df, time_dict)
+    total_alone_time = get_total_alone_time(visitors_df, time_dict, 'Day')
+
+    events_data = {
+        'time': ['2023-01-05 10:30:00', '2023-01-05 23:00:00', '2023-01-05 23:15:00', '2023-01-06 04:00:00', '2023-01-06 05:30:00', '2023-01-06 10:00:00', '2023-01-06 14:00:00'],
+        'event': ['AcuteFall', 'AcuteFall', 'ModerateFall', 'LyingOnFloor', 'ModerateFall', 'LyingOnFloor', 'AcuteFall']
+    }
+    events_df = pd.DataFrame(events_data)
+    events_df = validate_df(events_df)
+    events_df = day_night_update_df(events_df, time_dict)
+    night_events = get_number_events(events_df, 'Night')
+    day_events = get_number_events(events_df, 'Day')
