@@ -274,6 +274,7 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     return Counter(rel_df['event'])
 
+
 def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
     """Get number of low activity (sedentary) during day/night
 
@@ -287,6 +288,7 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     return sum(rel_df['activity'] == 'Low')
+
 
 def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float]:
     """Get gait average per day/night
@@ -304,6 +306,7 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     avg_time = rel_df['total_time'].apply('average')
     avg_distance = rel_df['total_distance'].apply('average')
     return avg_sessions, avg_time, avg_distance
+
 
 if __name__ == '__main__':
     # sleep sessions
