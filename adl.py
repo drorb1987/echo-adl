@@ -13,7 +13,6 @@ NUM_DAYS = 2
 MAX_AWAKE = 3
 
 
-
 def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     for t in ['start', 'stop', 'time']:
         if t in df:
