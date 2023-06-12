@@ -14,15 +14,32 @@ MAX_AWAKE = 3
 
 
 def validate_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Validate dataframe, chage to timestamp format and sort.
+
+    Args:
+        df (pd.DataFrame): a dataframe
+
+    Returns:
+        pd.DataFrame: a dataframe that ready for further uses
+    """
     for t in ['start', 'stop', 'time']:
         if t in df:
             df[t] = pd.to_datetime(df[t])
-            if t is not 'stop':
+            if t != 'stop':
                 df = df.sort_values(t)
     return df
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
+    """Make the hours array
+
+    Args:
+        df (pd.DataFrame): a sleep sessions dataframe
+        dates (pd.DatetimeIndex): the dates
+
+    Returns:
+        np.ndarray: hours array with sleep/awake indicators
+    """
     hours = np.full(NUM_DAYS * SPLITS_PER_HOUR * HOURS_PER_DAY, AWAKE)
     for _, row in df.iterrows():
         # start time index
@@ -43,6 +60,14 @@ def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
 
 
 def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int, int]:
+    """Clustering for the day/night
+
+    Args:
+        hours (pd.DatetimeIndex): an array for hours, each hour there is an indication for sleep/awake
+
+    Returns:
+        tuple[int, int]: indices for night start and end
+    """
     # clustering for day and night
     mid = len(hours) // 2
     night_start = mid - 1
@@ -59,7 +84,16 @@ def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int, int]:
     return night_start+1, night_end
 
 
-def day_night_update_df(df: pd.DataFrame, time_dict: dict[str, dict[str, pd.Timestamp]]) -> pd.DataFrame:
+def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
+    """Update the dataframe by adding a column for day/night
+
+    Args:
+        df (pd.DataFrame): a dataframe
+        time_dict (dict): a dictionary for the day night times
+
+    Returns:
+        pd.DataFrame: a dataframe that contains the day/night column
+    """
     if 'day_or_night' in df:
         return df
     df['day_or_night'] = ['Day'] * len(df)
