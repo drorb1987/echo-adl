@@ -26,8 +26,38 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
         if t in df:
             df[t] = pd.to_datetime(df[t])
             if t != 'stop':
-                df = df.sort_values(t)
+                df = df.sort_values(t, ignore_index=True)
     return df
+
+
+def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Create consecutive dataframe
+
+    Args:
+        df (pd.DataFrame): a dataframe
+
+    Returns:
+        pd.DataFrame: a dataframe that gets the consecutive time
+    """
+    name = df.columns[2]
+    start = df.loc[0, 'start']
+    stop = df.loc[0, 'stop']
+    value = df.loc[0, name]
+    starts = []
+    stops = []
+    values = []
+    for _, row in df.iterrows():
+        if row[name] == value:
+            stop = row['stop']
+        else:
+            starts.append(start)
+            stops.append(stop)
+            values.append(value)
+            start, stop, value = row['start'], row['stop'], row[name]
+    starts.append(start)
+    stops.append(stop)
+    values.append(value)
+    return pd.DataFrame({'start': starts, 'stop': stops, name: values})
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
