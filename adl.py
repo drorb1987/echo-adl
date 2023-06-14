@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
-from collections import Counter
+from collections import Counter, defaultdict
 
 AWAKE = 0
 SLEEP = 1
@@ -61,6 +61,42 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
                 values.append(value)
             start_index = stop_index = i
     return pd.DataFrame({'start': starts, 'stop': stops, name: values})
+
+
+def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
+                                    location_df: pd.DataFrame,
+                                    time_dict: dict,
+                                    day_or_night: str) -> tuple[int, defaultdict]:
+    """Count the number of out of bed (location/sleep)
+
+    Args:
+        sleep_df (pd.DataFrame): a sleep dataframe
+        location_df (pd.DataFrame): a location dataframe
+        time_dict (dict): a dictionary for the day night times
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        tuple[int, defaultdict]: number of out of bed and counter dictionary for locations
+    """
+    rel_sleep_df = get_relevant_df(sleep_df, time_dict, day_or_night)
+    rel_location_df = get_relevant_df(location_df, time_dict, day_or_night)
+    awake_df = pd.DataFrame(
+        {
+            'start': rel_sleep_df[:-1]['stop'].to_numpy(),
+            'stop': rel_sleep_df[1:]['start'].to_numpy()
+        }
+    )
+    number_out_of_bed = 0
+    counter = defaultdict(int)
+    for _, row in awake_df.iterrows():
+        cond = (row['start'] < rel_location_df['start']) & \
+            (row['stop'] > rel_location_df['stop']) & \
+            (rel_location_df['location'] != 'Bed')
+        if rel_location_df[cond]:
+            number_out_of_bed += 1
+            for location in rel_location_df[cond]['location'].unique():
+                counter[location] += sum(rel_location_df[cond]['location'] == location)
+    return number_out_of_bed, counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -436,3 +472,6 @@ if __name__ == '__main__':
     print(f"The daily average number of gait sessions is: {average_gait_sessions}")
     print(f"The daily average time of gait sessions is: {average_gait_time}")
     print(f"The daily average distance of gait sessions is: {average_gait_distance}")
+    
+    # sleep location
+    count_out_of_bed_loaction_sleep(sleep_df, location_df, 'Night')
