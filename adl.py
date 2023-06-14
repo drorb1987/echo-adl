@@ -40,23 +40,26 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: a dataframe that gets the consecutive time
     """
     name = df.columns[2]
-    start = df.loc[0, 'start']
-    stop = df.loc[0, 'stop']
-    value = df.loc[0, name]
+    is_object = df[name].dtype == object
+    start_index = stop_index = 0
     starts = []
     stops = []
     values = []
-    for _, row in df.iterrows():
-        if row[name] == value:
-            stop = row['stop']
+    for i in range(1, len(df)):
+        cond = (df.loc[i, 'start'] - df.loc[stop_index, 'stop'] < pd.Timedelta(minutes=1)) and (i < len(df) - 1)
+        if is_object:
+            cond = cond and df.loc[i, name] == df.loc[stop_index, name]
+        if cond:
+            stop_index = i
         else:
-            starts.append(start)
-            stops.append(stop)
-            values.append(value)
-            start, stop, value = row['start'], row['stop'], row[name]
-    starts.append(start)
-    stops.append(stop)
-    values.append(value)
+            starts.append(df.loc[start_index, 'start'])
+            stops.append(df.loc[stop_index, 'stop'])
+            if is_object:
+                values.append(df.loc[stop_index, name])
+            else:
+                value = df.loc[start_index: stop_index+1, name].apply('average')
+                values.append(value)
+            start_index = stop_index = i
     return pd.DataFrame({'start': starts, 'stop': stops, name: values})
 
 
