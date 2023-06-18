@@ -39,6 +39,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: a dataframe that gets the consecutive time
     """
+    df = validate_df(df)
     name = df.columns[2]
     is_object = df[name].dtype == object
     start_index = stop_index = 0
