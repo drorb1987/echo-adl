@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
-from collections import Counter
+from collections import Counter, defaultdict
 
 AWAKE = 0
 SLEEP = 1
@@ -26,8 +26,78 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
         if t in df:
             df[t] = pd.to_datetime(df[t])
             if t != 'stop':
-                df = df.sort_values(t)
+                df = df.sort_values(t, ignore_index=True)
     return df
+
+
+def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Create consecutive dataframe
+
+    Args:
+        df (pd.DataFrame): a dataframe
+
+    Returns:
+        pd.DataFrame: a dataframe that gets the consecutive time
+    """
+    df = validate_df(df)
+    name = df.columns[2]
+    is_object = df[name].dtype == object
+    start_index = stop_index = 0
+    starts = []
+    stops = []
+    values = []
+    for i in range(1, len(df)):
+        cond = (df.loc[i, 'start'] - df.loc[stop_index, 'stop'] < pd.Timedelta(minutes=1)) and (i < len(df) - 1)
+        if is_object:
+            cond = cond and df.loc[i, name] == df.loc[stop_index, name]
+        if cond:
+            stop_index = i
+        else:
+            starts.append(df.loc[start_index, 'start'])
+            stops.append(df.loc[stop_index, 'stop'])
+            if is_object:
+                values.append(df.loc[stop_index, name])
+            else:
+                value = df.loc[start_index: stop_index+1, name].apply('average')
+                values.append(value)
+            start_index = stop_index = i
+    return pd.DataFrame({'start': starts, 'stop': stops, name: values})
+
+
+def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
+                                    location_df: pd.DataFrame,
+                                    time_dict: dict,
+                                    day_or_night: str) -> tuple[int, defaultdict]:
+    """Count the number of out of bed (location/sleep)
+
+    Args:
+        sleep_df (pd.DataFrame): a sleep dataframe
+        location_df (pd.DataFrame): a location dataframe
+        time_dict (dict): a dictionary for the day night times
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        tuple[int, defaultdict]: number of out of bed and counter dictionary for locations
+    """
+    rel_sleep_df = get_relevant_df(sleep_df, time_dict, day_or_night)
+    rel_location_df = get_relevant_df(location_df, time_dict, day_or_night)
+    awake_df = pd.DataFrame(
+        {
+            'start': rel_sleep_df[:-1]['stop'].to_numpy(),
+            'stop': rel_sleep_df[1:]['start'].to_numpy()
+        }
+    )
+    number_out_of_bed = 0
+    counter = defaultdict(int)
+    for _, row in awake_df.iterrows():
+        cond = (row['start'] < rel_location_df['start']) & \
+            (row['stop'] > rel_location_df['stop']) & \
+            (rel_location_df['location'] != 'Bed')
+        if rel_location_df[cond]:
+            number_out_of_bed += 1
+            for location in rel_location_df[cond]['location'].unique():
+                counter[location] += sum(rel_location_df[cond]['location'] == location)
+    return number_out_of_bed, counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -96,7 +166,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     """
     if 'day_or_night' in df:
         return df
-    df['day_or_night'] = ['Day'] * len(df)
+    df['day_or_night'] = [None] * len(df)
     start = 'start' if 'start' in df else 'time'
     stop = 'stop' if 'stop' in df else 'time'
     for day_or_night in time_dict:
@@ -120,6 +190,8 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
     df = validate_df(df)
 
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
+    if len(dates) > 2:
+        dates = dates[-2:]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -128,14 +200,16 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=dates[1] + datetime.timedelta(days=1))
 
+    day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, 0)
+
     night_time = {
         'start': datetime_range[night_start],
         'end': datetime_range[night_end]
     }
 
     day_time = {
-        'start': datetime_range[night_end],
-        'end': datetime_range[night_start] + datetime.timedelta(days=1)
+        'start': datetime_range[night_end] + datetime.timedelta(days=day_delta[0]),
+        'end': datetime_range[night_start] + datetime.timedelta(days=day_delta[1])
     }
 
     time_dict  = {
@@ -403,3 +477,6 @@ if __name__ == '__main__':
     print(f"The daily average number of gait sessions is: {average_gait_sessions}")
     print(f"The daily average time of gait sessions is: {average_gait_time}")
     print(f"The daily average distance of gait sessions is: {average_gait_distance}")
+    
+    # sleep location
+    count_out_of_bed_loaction_sleep(sleep_df, location_df, 'Night')
