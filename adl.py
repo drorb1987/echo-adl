@@ -166,7 +166,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     """
     if 'day_or_night' in df:
         return df
-    df['day_or_night'] = ['Day'] * len(df)
+    df['day_or_night'] = [None] * len(df)
     start = 'start' if 'start' in df else 'time'
     stop = 'stop' if 'stop' in df else 'time'
     for day_or_night in time_dict:
@@ -190,6 +190,8 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
     df = validate_df(df)
 
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
+    if len(dates) > 2:
+        dates = dates[-2:]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -198,14 +200,16 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=dates[1] + datetime.timedelta(days=1))
 
+    day_delta = (0, 1) if df.iloc[-1]['stop'] > datetime.time(12, 0, 0) else (-1, -1)
+
     night_time = {
         'start': datetime_range[night_start],
         'end': datetime_range[night_end]
     }
 
     day_time = {
-        'start': datetime_range[night_end],
-        'end': datetime_range[night_start] + datetime.timedelta(days=1)
+        'start': datetime_range[night_end] + datetime.timedelta(days=day_delta[0]),
+        'end': datetime_range[night_start] + datetime.timedelta(days=day_delta[1])
     }
 
     time_dict  = {
