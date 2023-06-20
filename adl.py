@@ -200,7 +200,7 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=dates[1] + datetime.timedelta(days=1))
 
-    day_delta = (0, 1) if df.iloc[-1]['stop'] > datetime.time(12, 0, 0) else (-1, -1)
+    day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, -1)
 
     night_time = {
         'start': datetime_range[night_start],
