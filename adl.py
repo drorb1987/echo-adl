@@ -24,7 +24,7 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     for t in ['start', 'stop', 'time']:
         if t in df:
-            df[t] = pd.to_datetime(df[t])
+            df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
             if t != 'stop':
                 df = df.sort_values(t, ignore_index=True)
     return df
@@ -47,7 +47,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
     stops = []
     values = []
     for i in range(1, len(df)):
-        cond = (df.loc[i, 'start'] - df.loc[stop_index, 'stop'] < pd.Timedelta(minutes=1)) and (i < len(df) - 1)
+        cond = (df.loc[i, 'start'] - df.loc[stop_index, 'stop'] < pd.Timedelta(minutes=1))
         if is_object:
             cond = cond and df.loc[i, name] == df.loc[stop_index, name]
         if cond:
@@ -61,6 +61,14 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
                 value = df.loc[start_index: stop_index+1, name].apply('average')
                 values.append(value)
             start_index = stop_index = i
+        if i == len(df) - 1:
+            starts.append(df.loc[start_index, 'start'])
+            stops.append(df.loc[stop_index, 'stop'])
+            if is_object:
+                values.append(df.loc[stop_index, name])
+            else:
+                value = df.loc[start_index: stop_index+1, name].apply('average')
+                values.append(value)
     return pd.DataFrame({'start': starts, 'stop': stops, name: values})
 
 
@@ -88,6 +96,7 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
         }
     )
     number_out_of_bed = 0
+    out_of_bed_duration = 0
     counter = defaultdict(int)
     for _, row in awake_df.iterrows():
         cond = (row['start'] < rel_location_df['start']) & \
@@ -95,9 +104,10 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
             (rel_location_df['location'] != 'Bed')
         if rel_location_df[cond]:
             number_out_of_bed += 1
+            out_of_bed_duration += rel_location_df[cond]['total_time'].sum()
             for location in rel_location_df[cond]['location'].unique():
                 counter[location] += sum(rel_location_df[cond]['location'] == location)
-    return number_out_of_bed, counter
+    return number_out_of_bed, out_of_bed_duration, counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -285,20 +295,21 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     return len(rel_df), rel_df['total_time'].sum()
 
 
-def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> dict[str, float]:
+def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> dict[str, float]:
     """Get location distribution during day/night
 
     Args:
         df (pd.DataFrame): location dataframe
         time_dict (dict): a dictionary for the day night times
         day_or_night (str): can get the values 'Day' or 'Night'
+        bed_included (bool): flag if to include bed on not (default False)
 
     Returns:
         dict[str, float]: returns a dictionary for the locations distribution
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     location_dist = rel_df.groupby('location')['total_time'].sum().to_dict()
-    if 'Bed' in location_dist:
+    if not bed_included and 'Bed' in location_dist:
         location_dist.pop('Bed')
     return location_dist
 
@@ -316,6 +327,21 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     return rel_df['respiration'].apply('average')
+
+
+def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
+    """Get average heart-rate during day/night
+
+    Args:
+        df (pd.DataFrame): respiration dataframe
+        time_dict (dict): a dictionary for the day night times
+        day_or_night (str): can get the values 'Day' or 'Night'
+
+    Returns:
+        float: returns an average heart-rate
+    """
+    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    return rel_df['heart_rate'].apply('average')
 
 
 def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -446,21 +472,6 @@ if __name__ == '__main__':
     print(f"The number of the events at night is: {dict(night_events)}")
     print(f"The number of the events at day is: {dict(day_events)}")
 
-    # hourly (sedentary)
-    hourly_activity = {
-        'time': pd.date_range(
-            start=time_dict['Night']['start'],
-            freq='1H',
-            end=time_dict['Day']['end'] - datetime.timedelta(hours=1)
-            ),
-        'activity': ['No', 'No', 'Low', 'Low', 'No', 'No', 'High', 'Low', 'Med', 'No', 'Low', 'Low', 'Med', 'Med', 'High', 'No', 'No', 'Low', 'No', 'Low', 'Low', 'Med', 'High', 'Med']
-    }
-    hourly_df = pd.DataFrame(hourly_activity)
-    night_sedentary = get_sedentary(hourly_df, time_dict, 'Night')
-    day_sedentary = get_sedentary(hourly_df, time_dict, 'Day')
-    print(f"The number of the sedentary at night is: {night_sedentary}")
-    print(f"The number of the sedentary at day is: {day_sedentary}")
-
     # gait
     gait_data = {
         'time': pd.date_range(
@@ -468,11 +479,20 @@ if __name__ == '__main__':
             freq='1H',
             end=time_dict['Day']['end'] - datetime.timedelta(hours=1)
             ),
+        'activity': [0, 0, 1, 1, 0, 0, 3, 1, 2, 0, 1, 1, 2, 2, 3, 0, 0, 1, 0, 1, 1, 2, 3, 2],
         'number_of_sessions': [3, 1, 0, 0, 0, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 0, 1, 4, 5, 1, 2, 2, 1, 0],
         'total_time': [20, 10, 0, 0, 0, 15, 0, 10, 20, 30, 15, 12, 0, 10, 20, 0, 5, 40, 35, 10, 12, 14, 3, 0],
         'total_distance': [50, 20, 0, 0, 0, 25, 0, 5, 30, 40, 25, 17, 0, 12, 22, 0, 4, 80, 50, 20, 22, 30, 5, 0]
     }
+    # 'activityLevel': [0, 0, 1, 1, 0, 0, 3, 1, 2, 0, 1, 1, 2, 2, 3, 0, 0, 1, 0, 1, 1, 2, 3, 2],
+    # 'numberOfWalkingSessions': [3, 1, 0, 0, 0, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 0, 1, 4, 5, 1, 2, 2, 1, 0],
+    # 'totalWalkDuration': [20, 10, 0, 0, 0, 15, 0, 10, 20, 30, 15, 12, 0, 10, 20, 0, 5, 40, 35, 10, 12, 14, 3, 0],
+    # 'totalWalkDistance': [50, 20, 0, 0, 0, 25, 0, 5, 30, 40, 25, 17, 0, 12, 22, 0, 4, 80, 50, 20, 22, 30, 5, 0]
     gait_df = pd.DataFrame(gait_data)
+    night_sedentary = get_sedentary(gait_df, time_dict, 'Night')
+    day_sedentary = get_sedentary(gait_df, time_dict, 'Day')
+    print(f"The number of the sedentary at night is: {night_sedentary}")
+    print(f"The number of the sedentary at day is: {day_sedentary}")
     average_gait_sessions, average_gait_time, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
     print(f"The daily average number of gait sessions is: {average_gait_sessions}")
     print(f"The daily average time of gait sessions is: {average_gait_time}")
