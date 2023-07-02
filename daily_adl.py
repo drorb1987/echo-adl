@@ -372,7 +372,7 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
         Counter: returns counter that counts the number of each event
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return Counter(rel_df['event'])
+    return Counter(rel_df['type'])
 
 
 def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     # events
     events_data = {
         'time': ['2023-01-05 10:30:00', '2023-01-05 23:00:00', '2023-01-05 23:15:00', '2023-01-06 04:00:00', '2023-01-06 05:30:00', '2023-01-06 10:00:00', '2023-01-06 14:00:00'],
-        'event': ['AcuteFall', 'AcuteFall', 'ModerateFall', 'LyingOnFloor', 'ModerateFall', 'LyingOnFloor', 'AcuteFall']
+        'type': ['AcuteFall', 'AcuteFall', 'ModerateFall', 'LyingOnFloor', 'ModerateFall', 'LyingOnFloor', 'AcuteFall']
     }
     events_df = pd.DataFrame(events_data)
     night_events = get_number_events(events_df, time_dict, 'Night')
