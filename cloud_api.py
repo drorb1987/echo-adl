@@ -1,7 +1,7 @@
 import requests
+import argparse
 import pandas as pd
-import numpy as np
-from datetime import datetime
+import datetime
 import daily_adl
 
 DeviceIdFile = "./Certificates/Certificate/DeviceId.key"
@@ -60,41 +60,51 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     respiration_df = pd.DataFrame(res['data']['respirations']).rename(columns=respiration_mapper)
     return respiration_df[respiration_columns]
 
-def warp_gait_df(res: dict) -> pd.DataFrame:
+def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
+    start_time = pd.to_datetime(time_dict['Day']['start'].date())
+    times = pd.date_range(
+        start=start_time,
+        freq='1H',
+        end=start_time+datetime.timedelta(hours=23)
+    )
     gait_mapper = {
         'numberOfWalkingSessions': 'number_of_sessions',
         'totalWalkDistance': 'total_distance',
         'totalWalkDuration': 'total_time',
         'activityLevel': 'activity'
     }
-    gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity']
+    gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
+    assert len(gait_df) == 24, "Need to be data for the last 24 hours"
+    gait_df['time'] = times
     return gait_df[gait_columns]
 
 def warp_alerts_df(response: dict) -> pd.DataFrame:
-    data = list(map(lambda x: x['data'], response.json()))
+    data = list(map(lambda x: x['data'], response))
     df = pd.DataFrame(data)
+    if not len(df):
+        return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
     df['date'] = pd.to_datetime(df['date'])
-    df['time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
-    df = df.sort_values('time', ignore_index=True)
+    df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
+    df = df.sort_values('date_time', ignore_index=True)
     return df
 
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     visitors_indices = (alerts_df['type'] == 'VisitorsIn') | (alerts_df['type'] == 'VisitorsOut')
     df = alerts_df[visitors_indices]
     start_time = []
-    end_time = []
+    stop_time = []
     for i in range(len(df)-1):
         if df.loc[i, 'type'] == 'VisitorsIn' and df.loc[i+1, 'type'] == 'VisitorsOut':
-            start_time.append(df.loc[i, 'time'])
-            end_time.append(df.loc[i+1, 'time'])
-    return pd.DataFrame({'start': start_time, 'end': end_time})
+            start_time.append(df.loc[i, 'date_time'])
+            stop_time.append(df.loc[i+1, 'date_time'])
+    return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
-def get_cloud_api(device_id: str, time_from: str, time_to: str):
+def get_cloud_api(device_id: str, from_date: str, to_date: str):
     querystring = {
         "deviceId": device_id,
-        "from": time_from,
-        "to": time_to
+        "from": from_date,
+        "to": to_date
     }
     headers = {
         'x-api-key': api_key
@@ -113,7 +123,9 @@ def get_cloud_api(device_id: str, time_from: str, time_to: str):
         params=querystring
     )
 
-    alerts_df = warp_alerts_df(response_alert)
+    response_alert_dict = response_alert.json()
+
+    alerts_df = warp_alerts_df(response_alert_dict)
     visitors_df = warp_visitors_df(alerts_df)
     
     analyse_body = []
@@ -139,21 +151,18 @@ def get_cloud_api(device_id: str, time_from: str, time_to: str):
         average_heartrate = daily_adl.get_average_heartrate(respiration_df, time_dict, 'Night')
 
         # gait
-        gait_df = warp_gait_df(res)
+        gait_df = warp_gait_df(res, time_dict)
         daily_sedantery = daily_adl.get_sedentary(gait_df, time_dict, 'Day')
         average_gait_sessions, average_gait_time, average_gait_distance = daily_adl.get_gait_average(gait_df, time_dict, 'Day')
 
         # alerts
-        # rel_indices = alerts_df['date'].apply(lambda x: x.date()) == pd.to_datetime(res['timestamp']).date()
-        # events_counter = daily_adl.get_number_events(alerts_df[rel_indices], time_dict, 'Day')
-        # alone_time = daily_adl.get_total_alone_time(alerts_df[rel_indices], time_dict, 'Day')
         events_counter = daily_adl.get_number_events(alerts_df, time_dict, 'Day')
         alone_time = daily_adl.get_total_alone_time(visitors_df, time_dict, 'Day')
 
         analyse_params = {
             "deviceID": device_id,
             "goToSleepTime": time_dict["Night"]["start"],
-            "wakUpTime": time_dict["Night"]["stop"],
+            "wakUpTime": time_dict["Night"]["end"],
             "sleepDurationDuringDay": day_sleep_duration,
             "sleepDurationDuringNight": night_sleep_duration,
             "restlessnessDuringDay": day_restlessness,
@@ -179,7 +188,9 @@ def get_cloud_api(device_id: str, time_from: str, time_to: str):
 
 
 if __name__ == '__main__':
-    device_id = "DemoRoom"
-    from_time = "2023-06-01"
-    to_time = "2023-06-30"
-    get_cloud_api(device_id, from_time, to_time)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--device_id')
+    parser.add_argument('-f', '--from_date')
+    parser.add_argument('-t', '--to_date')
+    args = parser.parse_args()
+    get_cloud_api(args.device_id, args.from_date, args.to_date)
