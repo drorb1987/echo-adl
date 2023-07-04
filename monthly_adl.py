@@ -66,3 +66,44 @@ def activity_level(analyse: pd.DataFrame) -> int:
     walking_distance_stats = calc_statistics(gait_df[2])
     walking_speed_stats = calc_statistics(gait_df[2]/gait_df[1])
     walking_sessions_stats = calc_statistics(gait_df[0])
+    # walking_distance_per_session
+    return get_total_status(
+        sedantry_stats,
+        location_distribution_stats,
+        walking_distance_stats,
+        walking_speed_stats,
+        walking_sessions_stats 
+    )
+
+
+def alone_time(analyse: pd.DataFrame) -> int:
+    alone_stats = calc_statistics(analyse["aloneTime"])
+    return alone_time['status']
+
+
+def fall_risk(analyse: pd.DataFrame) -> int:
+    acute_fall_stats = calc_statistics(analyse["acuteFalls"])
+    moderate_fall_stats = calc_statistics(analyse["moderateFalls"])
+    long_lying_on_floor_stats = calc_statistics(analyse["lyingOnFloor"])
+    sedantry_stats = calc_statistics(analyse["sedentaryDurationDuringDay"])
+    night_restless_stats = calc_statistics(analyse["restlessnessDuringNight"])
+    number_out_of_bed_stats = calc_statistics(analyse["outOfBedDuringNight"])
+    gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
+    walking_speed_stats = calc_statistics(gait_df[2]/gait_df[1])
+    return get_total_status(
+        acute_fall_stats,
+        moderate_fall_stats,
+        long_lying_on_floor_stats,
+        sedantry_stats,
+        night_restless_stats,
+        number_out_of_bed_stats,
+        walking_speed_stats
+    )
+
+
+def get_monthly_stats(analyse: pd.DataFrame) -> tuple[int, int, int, int]:
+    sleep_status = sleep_quality(analyse)
+    activity_status = activity_level(analyse)
+    alone_status = alone_time(analyse)
+    fall_status = fall_risk(analyse)
+    return sleep_status, activity_status, alone_status, fall_status
