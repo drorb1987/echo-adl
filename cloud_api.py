@@ -100,7 +100,7 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
             stop_time.append(df.loc[i+1, 'date_time'])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
-def get_cloud_api(device_id: str, from_date: str, to_date: str):
+def daily_analyse_api(device_id: str, from_date: str, to_date: str):
     querystring = {
         "deviceId": device_id,
         "from": from_date,
@@ -131,13 +131,13 @@ def get_cloud_api(device_id: str, from_date: str, to_date: str):
     analyse_body = []
 
     for res in response.json():
+        curr_date = pd.to_datetime(res['timeStamp']).date()
         sleep_df = warp_sleep_df(res)
         sleep_df, time_dict = daily_adl.get_day_night_times(sleep_df)
         night_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Night')
         day_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Day')
         night_restlessness = daily_adl.get_restlessness(sleep_df, time_dict, 'Night')
         day_restlessness = daily_adl.get_restlessness(sleep_df, time_dict, 'Day')
-        # sleep_df.rename(columns=inverse_sleep_mapper, inplace=True)
 
         # location
         location_df = warp_location_df(res)
@@ -161,8 +161,9 @@ def get_cloud_api(device_id: str, from_date: str, to_date: str):
 
         analyse_params = {
             "deviceID": device_id,
-            "goToSleepTime": time_dict["Night"]["start"],
-            "wakUpTime": time_dict["Night"]["end"],
+            "date": str(curr_date),
+            "goToSleepTime": str(time_dict["Night"]["start"]),
+            "wakUpTime": str(time_dict["Night"]["end"]),
             "sleepDurationDuringDay": day_sleep_duration,
             "sleepDurationDuringNight": night_sleep_duration,
             "restlessnessDuringDay": day_restlessness,
@@ -170,7 +171,7 @@ def get_cloud_api(device_id: str, from_date: str, to_date: str):
 
             "outOfBedDuringNight": number_out_of_bed,
             "durationOfOutOfBed": night_out_of_bed_duration,
-            "locationDistributionOfOutOfBedDuringNight": location_counter, # [1, 0, 0],
+            "locationDistributionOfOutOfBedDuringNight": dict(location_counter), # [1, 0, 0],
 
             "averageNightlyRR": average_respiration,
             "averageNightlyHR": average_heartrate,
@@ -186,6 +187,16 @@ def get_cloud_api(device_id: str, from_date: str, to_date: str):
 
         analyse_body.append(analyse_params)
 
+        # Write the analyse params to the DB using the API
+        headers_analyse = headers.copy()
+        headers_analyse['Content-Type'] = 'application/json'
+        response_analyse = requests.request(
+            "POST",
+            url_extended_analyze_report,
+            headers=headers_analyse,
+            json=analyse_params
+        )
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -193,4 +204,4 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--from_date')
     parser.add_argument('-t', '--to_date')
     args = parser.parse_args()
-    get_cloud_api(args.device_id, args.from_date, args.to_date)
+    daily_analyse_api(args.device_id, args.from_date, args.to_date)
