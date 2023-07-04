@@ -78,7 +78,7 @@ def activity_level(analyse: pd.DataFrame) -> int:
 
 def alone_time(analyse: pd.DataFrame) -> int:
     alone_stats = calc_statistics(analyse["aloneTime"])
-    return alone_time['status']
+    return alone_stats['status']
 
 
 def fall_risk(analyse: pd.DataFrame) -> int:
