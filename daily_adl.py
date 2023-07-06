@@ -276,6 +276,8 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
         float: average restlessness
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     return (rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum()
 
 
