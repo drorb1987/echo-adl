@@ -2,7 +2,7 @@ import requests
 import argparse
 import pandas as pd
 import datetime
-import daily_adl
+import daily_adl, monthly_adl
 
 DeviceIdFile = "./Certificates/Certificate/DeviceId.key"
 publicKeyFile = "./Certificates/Certificate/publicKey.key"
@@ -10,8 +10,10 @@ publicKeyFile = "./Certificates/Certificate/publicKey.key"
 url_extended_report     = "https://backend-dev.echocare-ncs.com/api/device/extendedReport"
 url_get_extended_report = "https://backend-dev.echocare-ncs.com/api/device/getExtendedReport"
 
-url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport"
 url_get_emergenies_report = "https://backend-dev.echocare-ncs.com/api/device/getEmergencies"
+
+url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport"
+url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport"
 
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
@@ -196,6 +198,40 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
             headers=headers_analyse,
             json=analyse_params
         )
+
+
+def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
+    querystring = {
+        "deviceId": device_id,
+        "from": from_date,
+        "to": to_date
+    }
+    headers = {
+        'x-api-key': api_key
+    }
+    response_get = requests.request(
+        "GET",
+        url_get_extended_analyze_report,
+        headers=headers,
+        params=querystring
+    )
+
+    df = pd.DataFrame(response_get.json())
+    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
+    
+    monthly_adl_params = {
+        "sleep_status": sleep_status,
+        "activity_status": activity_status,
+        "alone_status": alone_status,
+        "fall_status": fall_status
+    }
+
+    response_post = requests.request(
+        "POST",
+        url_extended_analyze_report,
+        headers=headers,
+        json=monthly_adl_params
+    )
 
 
 if __name__ == '__main__':

@@ -1,12 +1,13 @@
 import pandas as pd
+from typing import Any
 
 RED = 0
 YELLOW = 1
 GREEN = 2
 
 
-def get_total_status(*args):
-    statuses = [stats['status'] for stats in args]
+def get_total_status(d: dict) -> int:
+    statuses = [d[key]['status'] for key in d]
     if RED in statuses:
         return RED
     elif YELLOW in statuses:
@@ -26,79 +27,62 @@ def calc_status_per(mean: float, std: float) -> int:
     return status
 
 
-def calc_statistics(analyse_param: pd.Series) -> dict[str, float]:
-    mean = analyse_param.apply('average')
+def calc_statistics(analyse_param: pd.Series) -> dict[str, Any]:
+    mean = analyse_param.dropna().apply('average')
     std = analyse_param.apply('std')
     status = calc_status_per(mean, std)
-    return {'mean': mean, 'std': std, 'status': status}
+    return {'all': analyse_param.to_list(), 'mean': mean, 'std': std, 'status': status}
 
 
 def calc_location_distribution(analyse_param: pd.Series):
     return dict(pd.DataFrame(analyse_param.to_list()).sum())
 
 
-def sleep_quality(analyse: pd.DataFrame) -> int:
-    night_sleep_stats = calc_statistics(analyse["sleepDurationDuringNight"])
-    night_restless_stats = calc_statistics(analyse["restlessnessDuringNight"])
-    go_to_sleep_time_stats = calc_statistics(analyse["goToSleepTime"])
-    wake_up_time_stats = calc_statistics(analyse["wakeUpTime"])
-    number_out_of_bed_stats = calc_statistics(analyse["outOfBedDuringNight"])
-    duration_out_of_bed_stats = calc_statistics(analyse["durationOfOutOfBed"])
-    day_sleep_stats = calc_statistics(analyse["sleepDurationDuringDay"])
-    location_dist_stats = calc_statistics(analyse["locationDistributionOfOutOfBedDuringNight"])
-    respiration_stats = calc_statistics(analyse["averageNightlyRR"])
-    return get_total_status(night_sleep_stats,
-                            night_restless_stats,
-                            go_to_sleep_time_stats,
-                            wake_up_time_stats,
-                            number_out_of_bed_stats,
-                            duration_out_of_bed_stats,
-                            day_sleep_stats,
-                            location_dist_stats,
-                            respiration_stats
-                            )
+def sleep_quality(analyse: pd.DataFrame) -> dict:
+    quality = {}
+    quality['night_sleep_stats'] = calc_statistics(analyse["sleepDurationDuringNight"])
+    quality['night_restless_stats'] = calc_statistics(analyse["restlessnessDuringNight"])
+    quality['go_to_sleep_time_stats'] = calc_statistics(analyse["goToSleepTime"])
+    quality['wake_up_time_stats'] = calc_statistics(analyse["wakeUpTime"])
+    quality['number_out_of_bed_stats'] = calc_statistics(analyse["outOfBedDuringNight"])
+    quality['duration_out_of_bed_stats'] = calc_statistics(analyse["durationOfOutOfBed"])
+    quality['day_sleep_stats'] = calc_statistics(analyse["sleepDurationDuringDay"])
+    quality['location_dist_stats'] = calc_statistics(analyse["locationDistributionOfOutOfBedDuringNight"])
+    quality['respiration_stats'] = calc_statistics(analyse["averageNightlyRR"])
+    quality['status'] = get_total_status(quality)
+    return quality
     
 
-def activity_level(analyse: pd.DataFrame) -> int:
-    sedantry_stats = calc_statistics(analyse["sedentaryDurationDuringDay"])
-    location_distribution_stats = calc_location_distribution(analyse["locationDistributionDuringDay"])
+def activity_level(analyse: pd.DataFrame) -> dict:
+    quality = {}
+    quality['sedantry_stats'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
+    quality['location_distribution_stats'] = calc_location_distribution(analyse["locationDistributionDuringDay"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    walking_distance_stats = calc_statistics(gait_df[2])
-    walking_speed_stats = calc_statistics(gait_df[2]/gait_df[1])
-    walking_sessions_stats = calc_statistics(gait_df[0])
+    quality['walking_distance_stats'] = calc_statistics(gait_df[2])
+    quality['walking_speed_stats'] = calc_statistics(gait_df[2]/gait_df[1])
+    quality['walking_sessions_stats'] = calc_statistics(gait_df[0])
     # walking_distance_per_session
-    return get_total_status(
-        sedantry_stats,
-        location_distribution_stats,
-        walking_distance_stats,
-        walking_speed_stats,
-        walking_sessions_stats 
-    )
+    quality['status'] = get_total_status(quality)
+    return quality
 
 
-def alone_time(analyse: pd.DataFrame) -> int:
-    alone_stats = calc_statistics(analyse["aloneTime"])
-    return alone_stats['status']
+def alone_time(analyse: pd.DataFrame) -> dict:
+    quality = {}
+    quality['alone_stats'] = calc_statistics(analyse["aloneTime"])
+    return quality
 
 
-def fall_risk(analyse: pd.DataFrame) -> int:
-    acute_fall_stats = calc_statistics(analyse["acuteFalls"])
-    moderate_fall_stats = calc_statistics(analyse["moderateFalls"])
-    long_lying_on_floor_stats = calc_statistics(analyse["lyingOnFloor"])
-    sedantry_stats = calc_statistics(analyse["sedentaryDurationDuringDay"])
-    night_restless_stats = calc_statistics(analyse["restlessnessDuringNight"])
-    number_out_of_bed_stats = calc_statistics(analyse["outOfBedDuringNight"])
+def fall_risk(analyse: pd.DataFrame) -> dict:
+    quality = {}
+    quality['acute_fall_stats'] = calc_statistics(analyse["acuteFalls"])
+    quality['moderate_fall_stats'] = calc_statistics(analyse["moderateFalls"])
+    quality['long_lying_on_floor_stats'] = calc_statistics(analyse["lyingOnFloor"])
+    quality['sedantry_stats'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
+    quality['night_restless_stats'] = calc_statistics(analyse["restlessnessDuringNight"])
+    quality['number_out_of_bed_stats'] = calc_statistics(analyse["outOfBedDuringNight"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    walking_speed_stats = calc_statistics(gait_df[2]/gait_df[1])
-    return get_total_status(
-        acute_fall_stats,
-        moderate_fall_stats,
-        long_lying_on_floor_stats,
-        sedantry_stats,
-        night_restless_stats,
-        number_out_of_bed_stats,
-        walking_speed_stats
-    )
+    quality['walking_speed_stats'] = calc_statistics(gait_df[2]/gait_df[1])
+    quality['status'] = get_total_status(quality)
 
 
 def get_monthly_stats(analyse: pd.DataFrame) -> tuple[int, int, int, int]:
