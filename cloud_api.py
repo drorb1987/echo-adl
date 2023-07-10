@@ -15,6 +15,8 @@ url_get_emergenies_report = "https://backend-dev.echocare-ncs.com/api/device/get
 url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport"
 url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport"
 
+url_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/setStatisticsReport"
+
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
 def enumOpcodeReadPubKeyConfig() -> str:
@@ -228,7 +230,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
 
     response_post = requests.request(
         "POST",
-        url_extended_analyze_report,
+        url_extended_statistics_report,
         headers=headers,
         json=monthly_adl_params
     )
