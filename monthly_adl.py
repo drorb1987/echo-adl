@@ -16,22 +16,6 @@ def get_total_status(d: dict) -> float:
         return GREEN
 
 
-def calc_status_per(mean: float, std: float) -> int:
-    status = GREEN
-
-    return status
-
-
-def calc_dev_status_per(deviations: list[float]) -> int:
-    if all([dev <= 0.1 for dev in deviations]):
-        status = GREEN
-    elif deviations <= 0.5:
-        status = YELLOW
-    else:
-        status = RED
-    return status
-
-
 def calc_statistics(analyse_param: pd.Series) -> float:
     mean = analyse_param.dropna().apply('average')
     std = analyse_param.apply('std')
@@ -41,9 +25,6 @@ def calc_statistics(analyse_param: pd.Series) -> float:
     elif any(analyse_param.rolling(3).apply(lambda x: all(mean+2*std > x > mean+std))):
         status = YELLOW
     return status
-    # deviation = abs(analyse_param - mean) / mean
-    # status = calc_dev_status_per(deviation)
-    # return {'all': analyse_param.to_list(), 'mean': mean, 'std': std, 'deviation': deviation.to_list(), 'status': status}
 
 
 def calc_location_distribution(analyse_param: pd.Series):
