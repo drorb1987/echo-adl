@@ -219,7 +219,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
     )
 
     df = pd.DataFrame(response_get.json())
-    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly(df)
+    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
