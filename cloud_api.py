@@ -15,6 +15,8 @@ url_get_emergenies_report = "https://backend-dev.echocare-ncs.com/api/device/get
 url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport"
 url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport"
 
+url_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/setStatisticsReport"
+
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
 def enumOpcodeReadPubKeyConfig() -> str:
@@ -86,8 +88,8 @@ def warp_alerts_df(response: dict) -> pd.DataFrame:
     df = pd.DataFrame(data)
     if not len(df):
         return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
-    df['date'] = pd.to_datetime(df['date'])
     df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
+    df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date_time', ignore_index=True)
     return df
 
@@ -217,18 +219,41 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
     )
 
     df = pd.DataFrame(response_get.json())
-    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
-    
+    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly(df)
+
     monthly_adl_params = {
-        "sleep_status": sleep_status,
-        "activity_status": activity_status,
-        "alone_status": alone_status,
-        "fall_status": fall_status
+        "deviceId": device_id,
+        "sleepDuration": sleep_status["night_sleep"],
+        "restlessness": sleep_status["night_restless"],
+        "goToSleepTime": sleep_status["go_to_sleep_time"],
+        "wakeUpTime": sleep_status["wake_up_time"],
+        "numberOfOutOfBedDuringNight": sleep_status["number_out_of_bed"],
+        "durationOfOutOfBed": sleep_status["number_out_of_bed"],
+        "sleepDurationDuringDay": sleep_status["day_sleep"],
+        "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
+        "averageNightlyRR": sleep_status["respiration"],
+        "locationDistributionDuringDay": activity_status["location_distribution"],
+        "sedentaryDurationDuringDay": activity_status["sedantery"],
+        "aloneTime": alone_status["alone_time"],
+        "numberOfAcuteFalls": fall_status["acute_fall"],
+        "numberOfModerateFalls": fall_status["moderate_fall"],
+        "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
+        "gaitStatisticsDuringDay": [
+            activity_status["walking_distance"],
+            activity_status["walking_speed"],
+            activity_status["walking_sessions"],
+        ],
+        "analysis": {
+            "sleepQuality": sleep_status["sleep_quality"],
+            "activityLevel": activity_status["activity_level"],
+            "aloneTime": alone_status["alone_time"],
+            "fallRisk": fall_status["fall_risk"]
+            }
     }
 
     response_post = requests.request(
         "POST",
-        url_extended_analyze_report,
+        url_extended_statistics_report,
         headers=headers,
         json=monthly_adl_params
     )
@@ -236,8 +261,14 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('-m', '--mode')
     parser.add_argument('-d', '--device_id')
     parser.add_argument('-f', '--from_date')
     parser.add_argument('-t', '--to_date')
     args = parser.parse_args()
-    daily_analyse_api(args.device_id, args.from_date, args.to_date)
+    if args.mode == "day":
+        daily_analyse_api(args.device_id, args.from_date, args.to_date)
+    elif args.mode == "month":
+        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
+    else:
+        print("The mode need to be: day/month")
