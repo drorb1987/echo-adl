@@ -88,8 +88,8 @@ def warp_alerts_df(response: dict) -> pd.DataFrame:
     df = pd.DataFrame(data)
     if not len(df):
         return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
-    df['date'] = pd.to_datetime(df['date'])
     df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
+    df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date_time', ignore_index=True)
     return df
 

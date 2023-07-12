@@ -328,6 +328,8 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
         float: returns an average respiration
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     return rel_df['respiration'].apply('average')
 
 
@@ -343,6 +345,8 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
         float: returns an average heart-rate
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     return rel_df['heart_rate'].apply('average')
 
 
@@ -404,6 +408,8 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
         tuple[float, float, float]: returns average number of gait sessions, time and distance
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None, None, None
     avg_sessions = rel_df['number_of_sessions'].apply('average')
     avg_time = rel_df['total_time'].apply('average')
     avg_distance = rel_df['total_distance'].apply('average')
