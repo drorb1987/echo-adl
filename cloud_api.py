@@ -224,38 +224,42 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         headers=headers,
         params=querystring
     )
+    public_key = enumOpcodeReadPubKeyConfig()
 
     df = pd.DataFrame([res['data'] for res in response_get.json()])
     sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
-        "sleepDuration": sleep_status["night_sleep"],
-        "restlessness": sleep_status["night_restless"],
-        "goToSleepTime": sleep_status["go_to_sleep_time"],
-        "wakeUpTime": sleep_status["wake_up_time"],
-        "numberOfOutOfBedDuringNight": sleep_status["number_out_of_bed"],
-        "durationOfOutOfBed": sleep_status["number_out_of_bed"],
-        "sleepDurationDuringDay": sleep_status["day_sleep"],
-        "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
-        "averageNightlyRR": sleep_status["respiration"],
-        "locationDistributionDuringDay": activity_status["location_distribution"],
-        "sedentaryDurationDuringDay": activity_status["sedantery"],
-        "aloneTime": alone_status["alone_time"],
-        "numberOfAcuteFalls": fall_status["acute_fall"],
-        "numberOfModerateFalls": fall_status["moderate_fall"],
-        "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
-        "gaitStatisticsDuringDay": [
-            activity_status["walking_distance"],
-            activity_status["walking_speed"],
-            activity_status["walking_sessions"],
-        ],
-        "analysis": {
-            "sleepQuality": sleep_status["sleep_quality"],
-            "activityLevel": activity_status["activity_level"],
+        "publicKey": public_key,
+        "data": {
+            "sleepDuration": sleep_status["night_sleep"],
+            "restlessness": sleep_status["night_restless"],
+            "goToSleepTime": sleep_status["go_to_sleep_time"],
+            "wakeUpTime": sleep_status["wake_up_time"],
+            "numberOfOutOfBedDuringNight": sleep_status["number_out_of_bed"],
+            "durationOfOutOfBed": sleep_status["number_out_of_bed"],
+            "sleepDurationDuringDay": sleep_status["day_sleep"],
+            "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
+            "averageNightlyRR": sleep_status["respiration"],
+            "locationDistributionDuringDay": activity_status["location_distribution"],
+            "sedentaryDurationDuringDay": activity_status["sedantery"],
             "aloneTime": alone_status["alone_time"],
-            "fallRisk": fall_status["fall_risk"]
-            }
+            "numberOfAcuteFalls": fall_status["acute_fall"],
+            "numberOfModerateFalls": fall_status["moderate_fall"],
+            "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
+            "gaitStatisticsDuringDay": [
+                activity_status["walking_distance"],
+                activity_status["walking_speed"],
+                activity_status["walking_sessions"],
+            ],
+            "analysis": {
+                "sleepQuality": sleep_status["sleep_quality"],
+                "activityLevel": activity_status["activity_level"],
+                "aloneTime": alone_status["alone_time"],
+                "fallRisk": fall_status["fall_risk"]
+                }
+        }
     }
 
     response_post = requests.request(
