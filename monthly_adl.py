@@ -17,12 +17,12 @@ def get_total_status(d: dict) -> float:
 
 
 def calc_statistics(analyse_param: pd.Series) -> float:
-    mean = analyse_param.dropna().apply('average')
-    std = analyse_param.apply('std')
+    mean = analyse_param.mean()
+    std = analyse_param.std()
     status = GREEN
-    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+2*std))):
+    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+2*std)).dropna()):
         status = RED
-    elif any(analyse_param.rolling(3).apply(lambda x: all(mean+2*std > x > mean+std))):
+    elif any(analyse_param.rolling(3).apply(lambda x: all(mean+2*std > x > mean+std)).dropna()):
         status = YELLOW
     return status
 
@@ -33,11 +33,11 @@ def calc_location_distribution(analyse_param: pd.Series):
 
 def sleep_quality(analyse: pd.DataFrame) -> dict:
     quality = {}
-    quality['night_sleep_stats'] = calc_statistics(analyse["sleepDurationDuringNight"])
-    quality['night_restless_stats'] = calc_statistics(analyse["restlessnessDuringNight"])
+    quality['night_sleep_stats'] = calc_statistics(analyse["sleepDuration"])
+    quality['night_restless_stats'] = calc_statistics(analyse["restlessness"])
     quality['go_to_sleep_time_stats'] = calc_statistics(analyse["goToSleepTime"])
     quality['wake_up_time_stats'] = calc_statistics(analyse["wakeUpTime"])
-    quality['number_out_of_bed_stats'] = calc_statistics(analyse["outOfBedDuringNight"])
+    quality['number_out_of_bed_stats'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
     quality['duration_out_of_bed_stats'] = calc_statistics(analyse["durationOfOutOfBed"])
     quality['day_sleep_stats'] = calc_statistics(analyse["sleepDurationDuringDay"])
     quality['location_dist_stats'] = calc_statistics(analyse["locationDistributionOfOutOfBedDuringNight"])
@@ -67,9 +67,9 @@ def alone_time(analyse: pd.DataFrame) -> dict:
 
 def fall_risk(analyse: pd.DataFrame) -> dict:
     quality = {}
-    quality['acute_fall_stats'] = calc_statistics(analyse["acuteFalls"])
-    quality['moderate_fall_stats'] = calc_statistics(analyse["moderateFalls"])
-    quality['long_lying_on_floor_stats'] = calc_statistics(analyse["lyingOnFloor"])
+    quality['acute_fall_stats'] = calc_statistics(analyse["numberOfAcuteFalls"])
+    quality['moderate_fall_stats'] = calc_statistics(analyse["numberOfModerateFalls"])
+    quality['long_lying_on_floor_stats'] = calc_statistics(analyse["numberOfLyingOnFloor"])
     quality['sedantry_stats'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
     quality['night_restless_stats'] = calc_statistics(analyse["restlessnessDuringNight"])
     quality['number_out_of_bed_stats'] = calc_statistics(analyse["outOfBedDuringNight"])

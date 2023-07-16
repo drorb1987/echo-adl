@@ -131,6 +131,8 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
 
     alerts_df = warp_alerts_df(response_alert_dict)
     visitors_df = warp_visitors_df(alerts_df)
+
+    public_key = enumOpcodeReadPubKeyConfig()
     
     analyse_body = []
 
@@ -164,29 +166,32 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
         alone_time = daily_adl.get_total_alone_time(visitors_df, time_dict, 'Day')
 
         analyse_params = {
-            "deviceID": device_id,
-            "date": str(curr_date),
-            "goToSleepTime": str(time_dict["Night"]["start"]),
-            "wakUpTime": str(time_dict["Night"]["end"]),
-            "sleepDurationDuringDay": day_sleep_duration,
-            "sleepDurationDuringNight": night_sleep_duration,
-            "restlessnessDuringDay": day_restlessness,
-            "restlessnessDuringNight": night_restlessness,
+            "deviceId": device_id,
+            "publicKey": public_key,
+            # "date": str(curr_date),
+            "data": {
+                "sleepDuration": night_sleep_duration,
+                "restlessness": night_restlessness,
+                "goToSleepTime": str(time_dict["Night"]["start"]),
+                "wakUpTime": str(time_dict["Night"]["end"]),
+                "numberOfOutOfBedDuringNight": number_out_of_bed,
+                "durationOfOutOfBed": night_out_of_bed_duration,
+                "sleepDurationDuringDay": day_sleep_duration,
+                # "restlessnessDuringDay": day_restlessness,
 
-            "outOfBedDuringNight": number_out_of_bed,
-            "durationOfOutOfBed": night_out_of_bed_duration,
-            "locationDistributionOfOutOfBedDuringNight": dict(location_counter), # [1, 0, 0],
+                "locationDistributionOfOutOfBedDuringNight": dict(location_counter), # [1, 0, 0],
 
-            "averageNightlyRR": average_respiration,
-            "averageNightlyHR": average_heartrate,
-            "locationDistributionDuringDay": daily_location_distribution, # [5, 3, 2],
-            "sedentaryDurationDuringDay": daily_sedantery,
-            "gaitStatisticsDuringDay": [average_gait_sessions, average_gait_time, average_gait_distance],
+                "averageNightlyRR": average_respiration,
+                # "averageNightlyHR": average_heartrate,
+                "locationDistributionDuringDay": daily_location_distribution, # [5, 3, 2],
+                "sedentaryDurationDuringDay": daily_sedantery,
+                "aloneTime": alone_time,
+                "numberOfAcuteFalls": events_counter['acuteFall'],
+                "numberOfModerateFalls": events_counter['moderateFall'],
+                "numberOfLyingOnFloor": events_counter['lyingOnFloor'],
+                "gaitStatisticsDuringDay": [average_gait_sessions, average_gait_time, average_gait_distance]
 
-            "aloneTime": alone_time,
-            "acuteFalls": events_counter['acuteFall'],
-            "moderateFalls": events_counter['moderateFall'],
-            "lyingOnFloor": events_counter['lyingOnFloor']
+            }
         }
 
         analyse_body.append(analyse_params)
@@ -200,6 +205,8 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
             headers=headers_analyse,
             json=analyse_params
         )
+        assert response_analyse.status_code == 200, "There is a problem in posting the analysis"
+        print("Posting to analysis report")
 
 
 def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
@@ -218,7 +225,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         params=querystring
     )
 
-    df = pd.DataFrame(response_get.json())
+    df = pd.DataFrame([res['data'] for res in response_get.json()])
     sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {

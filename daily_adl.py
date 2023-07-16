@@ -58,7 +58,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
             if is_object:
                 values.append(df.loc[stop_index, name])
             else:
-                value = df.loc[start_index: stop_index+1, name].apply('average')
+                value = df.loc[start_index: stop_index+1, name].mean()
                 values.append(value)
             start_index = stop_index = i
         if i == len(df) - 1:
@@ -67,7 +67,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
             if is_object:
                 values.append(df.loc[stop_index, name])
             else:
-                value = df.loc[start_index: stop_index+1, name].apply('average')
+                value = df.loc[start_index: stop_index+1, name].mean()
                 values.append(value)
     return pd.DataFrame({'start': starts, 'stop': stops, name: values})
 
@@ -330,7 +330,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
-    return rel_df['respiration'].apply('average')
+    return rel_df['respiration'].mean()
 
 
 def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -347,7 +347,7 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
-    return rel_df['heart_rate'].apply('average')
+    return rel_df['heart_rate'].mean()
 
 
 def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -410,9 +410,9 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None, None, None
-    avg_sessions = rel_df['number_of_sessions'].apply('average')
-    avg_time = rel_df['total_time'].apply('average')
-    avg_distance = rel_df['total_distance'].apply('average')
+    avg_sessions = rel_df['number_of_sessions'].mean()
+    avg_time = rel_df['total_time'].mean()
+    avg_distance = rel_df['total_distance'].mean()
     return avg_sessions, avg_time, avg_distance
 
 
