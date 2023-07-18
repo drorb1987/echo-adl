@@ -20,9 +20,11 @@ def calc_statistics(analyse_param: pd.Series) -> float:
     mean = analyse_param.mean()
     std = analyse_param.std()
     status = GREEN
+    if not std or pd.isna(std):
+        return status
     if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+2*std)).dropna()):
         status = RED
-    elif any(analyse_param.rolling(3).apply(lambda x: all(mean+2*std > x > mean+std)).dropna()):
+    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+std < x) & (x < mean+2*std))).dropna()):
         status = YELLOW
     return status
 
@@ -35,8 +37,8 @@ def sleep_quality(analyse: pd.DataFrame) -> dict:
     quality = {}
     quality['night_sleep_stats'] = calc_statistics(analyse["sleepDuration"])
     quality['night_restless_stats'] = calc_statistics(analyse["restlessness"])
-    quality['go_to_sleep_time_stats'] = calc_statistics(analyse["goToSleepTime"])
-    quality['wake_up_time_stats'] = calc_statistics(analyse["wakeUpTime"])
+    quality['go_to_sleep_time_stats'] = calc_statistics(analyse["goToSleepTime"].apply(pd.to_datetime))
+    quality['wake_up_time_stats'] = calc_statistics(analyse["wakeUpTime"].apply(pd.to_datetime))
     quality['number_out_of_bed_stats'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
     quality['duration_out_of_bed_stats'] = calc_statistics(analyse["durationOfOutOfBed"])
     quality['day_sleep_stats'] = calc_statistics(analyse["sleepDurationDuringDay"])

@@ -16,6 +16,7 @@ url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/s
 url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport"
 
 url_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/setStatisticsReport"
+url_get_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/getStatisticsReport"
 
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
@@ -226,7 +227,26 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
     )
     public_key = enumOpcodeReadPubKeyConfig()
 
+    df_cols = pd.DataFrame(columns=[
+        "sleepDuration",
+        "restlessness",
+        "goToSleepTime",
+        "wakeUpTime",
+        "numberOfOutOfBedDuringNight",
+        "durationOfOutOfBed",
+        "sleepDurationDuringDay",
+        "locationDistributionOfOutOfBedDuringNight",
+        "averageNightlyRR",
+        "locationDistributionDuringDay",
+        "sedentaryDurationDuringDay",
+        "aloneTime",
+        "numberOfAcuteFalls",
+        "numberOfModerateFalls",
+        "numberOfLyingOnFloor",
+        "gaitStatisticsDuringDay"
+        ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
+    df = pd.concat([df, df_cols])
     sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
