@@ -248,7 +248,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
     df = pd.concat([df, df_cols])
-    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
+    sleep_status, activity_status, alone_status, fall_status, acute_fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
@@ -266,7 +266,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
             "locationDistributionDuringDay": activity_status["location_distribution"],
             "sedentaryDurationDuringDay": activity_status["sedentary"],
             "aloneTime": alone_status["alone_time"],
-            "numberOfAcuteFalls": fall_status["acute_fall"],
+            "numberOfAcuteFalls": acute_fall_status,
             "numberOfModerateFalls": fall_status["moderate_fall"],
             "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
             "gaitStatisticsDuringDay": [
@@ -305,4 +305,4 @@ if __name__ == '__main__':
     elif args.mode == "month":
         monthly_analyse_api(args.device_id, args.from_date, args.to_date)
     else:
-        print("The mode need to be: day/month")
+        print("The mode needs to be: day/month")

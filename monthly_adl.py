@@ -29,10 +29,27 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     return int(status)
 
 
+def calc_statistics_by_number(analyse_param: pd.Series) -> int:
+    status = GREEN
+    number = analyse_param[-10:].sum()
+    if 0 < number < 5:
+        status = YELLOW
+    elif number >= 5:
+        status = RED
+    return int(status)
+
+
 def calc_location_distribution(analyse_param: pd.Series) -> dict[str, int]:
     data = [d for d in analyse_param.to_list() if d and not pd.isna(d)]
     d = dict(pd.DataFrame(data).sum())
     return {key: int(val) for key, val in d.items()}
+
+
+def acute_fall(analyse: pd.Series) -> int:
+    status = GREEN
+    if analyse.sum() > 0:
+        status = RED
+    return int(status)
 
 
 def sleep_quality(analyse: pd.DataFrame) -> dict:
@@ -71,9 +88,9 @@ def alone_time(analyse: pd.DataFrame) -> dict:
 
 def fall_risk(analyse: pd.DataFrame) -> dict:
     quality = {}
-    quality['acute_fall'] = calc_statistics(analyse["numberOfAcuteFalls"])
-    quality['moderate_fall'] = calc_statistics(analyse["numberOfModerateFalls"])
-    quality['long_lying_on_floor'] = calc_statistics(analyse["numberOfLyingOnFloor"])
+    quality['acute_fall'] = acute_fall(analyse["numberOfAcuteFalls"])
+    quality['moderate_fall'] = calc_statistics_by_number(analyse["numberOfModerateFalls"])
+    quality['long_lying_on_floor'] = calc_statistics_by_number(analyse["numberOfLyingOnFloor"])
     quality['sedantry'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
     quality['night_restless'] = calc_statistics(analyse["restlessness"])
     quality['number_out_of_bed'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
@@ -83,9 +100,10 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     return quality
 
 
-def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict]:
+def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, int]:
     sleep_status = sleep_quality(analyse)
     activity_status = activity_level(analyse)
     alone_status = alone_time(analyse)
     fall_status = fall_risk(analyse)
-    return sleep_status, activity_status, alone_status, fall_status
+    acute_fall_status = acute_fall(analyse["numberOfAcuteFalls"])
+    return sleep_status, activity_status, alone_status, fall_status, acute_fall_status
