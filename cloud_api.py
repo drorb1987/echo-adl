@@ -217,7 +217,8 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         "to": to_date
     }
     headers = {
-        'x-api-key': api_key
+        'x-api-key': api_key,
+        'Content-Type': 'application/json'
     }
     response_get = requests.request(
         "GET",
@@ -263,7 +264,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
             "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
             "averageNightlyRR": sleep_status["respiration"],
             "locationDistributionDuringDay": activity_status["location_distribution"],
-            "sedentaryDurationDuringDay": activity_status["sedantery"],
+            "sedentaryDurationDuringDay": activity_status["sedentary"],
             "aloneTime": alone_status["alone_time"],
             "numberOfAcuteFalls": fall_status["acute_fall"],
             "numberOfModerateFalls": fall_status["moderate_fall"],
@@ -271,7 +272,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
             "gaitStatisticsDuringDay": [
                 activity_status["walking_distance"],
                 activity_status["walking_speed"],
-                activity_status["walking_sessions"],
+                activity_status["walking_sessions"]
             ],
             "analysis": {
                 "sleepQuality": sleep_status["sleep_quality"],
@@ -288,6 +289,8 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         headers=headers,
         json=monthly_adl_params
     )
+    assert response_post.status_code == 200, "There is a problem in posting the monthly statistics"
+    print("Posting to monthly statistics report")
 
 
 if __name__ == '__main__':
