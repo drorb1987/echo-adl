@@ -396,7 +396,7 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
     return sum(rel_df['activity'] == 'Low')
 
 
-def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float]:
+def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
     """Get gait average per day/night
 
     Args:
@@ -405,7 +405,7 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
         day_or_night (str): can get the values 'Day' or 'Night'
 
     Returns:
-        tuple[float, float, float]: returns average number of gait sessions, time and distance
+        tuple[float, float, float, float]: returns total distance, average speed, average number of sessions and average distance.
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
@@ -413,7 +413,10 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     avg_sessions = rel_df['number_of_sessions'].mean()
     avg_time = rel_df['total_time'].mean()
     avg_distance = rel_df['total_distance'].mean()
-    return avg_sessions, avg_time, avg_distance
+    avg_speed = avg_distance / avg_time if avg_time else 0
+    tot_distance = rel_df['total_distance'].sum()
+    # return avg_sessions, avg_time, avg_distance
+    return tot_distance, avg_speed, avg_sessions, avg_distance
 
 
 if __name__ == '__main__':
@@ -501,9 +504,10 @@ if __name__ == '__main__':
     day_sedentary = get_sedentary(gait_df, time_dict, 'Day')
     print(f"The number of the sedentary at night is: {night_sedentary}")
     print(f"The number of the sedentary at day is: {day_sedentary}")
-    average_gait_sessions, average_gait_time, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
+    # average_gait_sessions, average_gait_time, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
+    total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
     print(f"The daily average number of gait sessions is: {average_gait_sessions}")
-    print(f"The daily average time of gait sessions is: {average_gait_time}")
+    print(f"The daily average time of gait sessions is: {average_gait_speed}")
     print(f"The daily average distance of gait sessions is: {average_gait_distance}")
     
     # sleep location
