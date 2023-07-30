@@ -208,7 +208,8 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     night_start, night_end = clustering_day_night(hours)
 
-    datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=dates[1] + datetime.timedelta(days=1))
+    date_end = dates[1] + datetime.timedelta(days=1) if len(dates) == 2 else dates[0] + datetime.timedelta(days=2)
+    datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=date_end)
 
     day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, 0)
 
@@ -261,7 +262,7 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return rel_df['total_time'].sum()
+    return float(rel_df['total_time'].sum())
 
 
 def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -278,7 +279,7 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
-    return (rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum()
+    return float((rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum())
 
 
 def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[int, float]:
@@ -294,7 +295,7 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     rel_df = rel_df[rel_df['location'] != 'Bed']
-    return len(rel_df), rel_df['total_time'].sum()
+    return len(rel_df), float(rel_df['total_time'].sum())
 
 
 def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> dict[str, float]:
@@ -330,7 +331,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
-    return rel_df['respiration'].mean()
+    return float(rel_df['respiration'].mean())
 
 
 def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -347,7 +348,7 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
-    return rel_df['heart_rate'].mean()
+    return float(rel_df['heart_rate'].mean())
 
 
 def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -363,7 +364,7 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
-    return total_time_of_day - rel_df['total_time'].sum()
+    return float(total_time_of_day - rel_df['total_time'].sum())
 
 
 def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Counter:
@@ -410,11 +411,11 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None, None, None
-    avg_sessions = rel_df['number_of_sessions'].mean()
-    avg_time = rel_df['total_time'].mean()
-    avg_distance = rel_df['total_distance'].mean()
+    avg_sessions = float(rel_df['number_of_sessions'].mean())
+    avg_time = float(rel_df['total_time'].mean())
+    avg_distance = float(rel_df['total_distance'].mean())
     avg_speed = avg_distance / avg_time if avg_time else 0
-    tot_distance = rel_df['total_distance'].sum()
+    tot_distance = float(rel_df['total_distance'].sum())
     # return avg_sessions, avg_time, avg_distance
     return tot_distance, avg_speed, avg_sessions, avg_distance
 

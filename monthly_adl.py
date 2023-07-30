@@ -15,6 +15,14 @@ NUM_TH = 5
 
 
 def get_total_status(d: dict) -> int:
+    """Get total status for the measurement
+
+    Args:
+        d (dict): a dictionary of all the stats of the measurement
+
+    Returns:
+        int: the color to indicate the status of the measurement
+    """
     statuses = [d[key] for key in d]
     status = GREEN
     if RED in statuses or RED_UP in statuses or RED_DOWN in statuses:
