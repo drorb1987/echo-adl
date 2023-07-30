@@ -105,11 +105,20 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
             stop_time.append(df.loc[i+1, 'date_time'])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
-def daily_analyse_api(device_id: str, from_date: str, to_date: str):
+def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+    """API for daily analysis ADL
+
+    Args:
+        device_id (str): device id
+        from_date (str): start date
+        to_date (str): end date
+        timezone (str, optional): timezone for dates. Defaults to "Israel".
+    """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date
+        "to": to_date,
+        "timeZone": timezone
     }
     headers = {
         'x-api-key': api_key
@@ -160,7 +169,7 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
         # gait
         gait_df = warp_gait_df(res, time_dict)
         daily_sedantery = daily_adl.get_sedentary(gait_df, time_dict, 'Day')
-        average_gait_sessions, average_gait_time, average_gait_distance = daily_adl.get_gait_average(gait_df, time_dict, 'Day')
+        total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance = daily_adl.get_gait_average(gait_df, time_dict, 'Day')
 
         # alerts
         events_counter = daily_adl.get_number_events(alerts_df, time_dict, 'Day')
@@ -169,7 +178,6 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
         analyse_params = {
             "deviceId": device_id,
             "publicKey": public_key,
-            # "date": str(curr_date),
             "data": {
                 "sleepDuration": night_sleep_duration,
                 "restlessness": night_restlessness,
@@ -178,19 +186,17 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
                 "numberOfOutOfBedDuringNight": number_out_of_bed,
                 "durationOfOutOfBed": night_out_of_bed_duration,
                 "sleepDurationDuringDay": day_sleep_duration,
-                # "restlessnessDuringDay": day_restlessness,
 
-                "locationDistributionOfOutOfBedDuringNight": dict(location_counter), # [1, 0, 0],
+                "locationDistributionOfOutOfBedDuringNight": dict(location_counter),
 
                 "averageNightlyRR": average_respiration,
-                # "averageNightlyHR": average_heartrate,
-                "locationDistributionDuringDay": daily_location_distribution, # [5, 3, 2],
+                "locationDistributionDuringDay": daily_location_distribution,
                 "sedentaryDurationDuringDay": daily_sedantery,
                 "aloneTime": alone_time,
                 "numberOfAcuteFalls": events_counter['acuteFall'],
                 "numberOfModerateFalls": events_counter['moderateFall'],
                 "numberOfLyingOnFloor": events_counter['lyingOnFloor'],
-                "gaitStatisticsDuringDay": [average_gait_sessions, average_gait_time, average_gait_distance]
+                "gaitStatisticsDuringDay": [total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance]
 
             }
         }
@@ -210,11 +216,20 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str):
         print("Posting to analysis report")
 
 
-def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
+def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+    """API for monthly analysis ADL
+
+    Args:
+        device_id (str): device id
+        from_date (str): start date
+        to_date (str): end date
+        timezone (str, optional): timezone for dates. Defaults to "Israel".
+    """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date
+        "to": to_date,
+        "timeZone": timezone
     }
     headers = {
         'x-api-key': api_key,
@@ -248,7 +263,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
     df = pd.concat([df, df_cols])
-    sleep_status, activity_status, alone_status, fall_status = monthly_adl.get_monthly_stats(df)
+    sleep_status, activity_status, alone_status, fall_status, acute_fall_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
@@ -266,13 +281,14 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str):
             "locationDistributionDuringDay": activity_status["location_distribution"],
             "sedentaryDurationDuringDay": activity_status["sedentary"],
             "aloneTime": alone_status["alone_time"],
-            "numberOfAcuteFalls": fall_status["acute_fall"],
+            "numberOfAcuteFalls": acute_fall_status,
             "numberOfModerateFalls": fall_status["moderate_fall"],
             "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
             "gaitStatisticsDuringDay": [
-                activity_status["walking_distance"],
+                activity_status["walking_total_distance"],
                 activity_status["walking_speed"],
-                activity_status["walking_sessions"]
+                activity_status["walking_sessions"],
+                activity_status["walking_average_distance"]
             ],
             "analysis": {
                 "sleepQuality": sleep_status["sleep_quality"],
@@ -299,10 +315,11 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--device_id')
     parser.add_argument('-f', '--from_date')
     parser.add_argument('-t', '--to_date')
+    parser.add_argument('-z', '--timezone', default="Israel")
     args = parser.parse_args()
     if args.mode == "day":
-        daily_analyse_api(args.device_id, args.from_date, args.to_date)
+        daily_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
     elif args.mode == "month":
-        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
+        monthly_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
     else:
-        print("The mode need to be: day/month")
+        print("The mode needs to be: day/month")
