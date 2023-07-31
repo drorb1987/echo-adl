@@ -63,6 +63,8 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     }
     respiration_columns = ['time', 'respiration', 'heart_rate']
     respiration_df = pd.DataFrame(res['data']['respirations']).rename(columns=respiration_mapper)
+    if not len(respiration_df):
+        return respiration_df
     return respiration_df[respiration_columns]
 
 def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
@@ -146,7 +148,7 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
     
     analyse_body = []
 
-    prev_res = []
+    prev_res = {}
 
     for res in response.json():
         if not prev_res:
