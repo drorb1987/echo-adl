@@ -208,8 +208,10 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     night_start, night_end = clustering_day_night(hours)
 
-    date_end = dates[1] + datetime.timedelta(days=1) if len(dates) == 2 else dates[0] + datetime.timedelta(days=2)
-    datetime_range = pd.date_range(start=dates[0], periods=len(hours) + 1, end=date_end)
+    date_start = dates[0] if len(dates) == 2 else dates[0] - datetime.timedelta(days=1)
+    date_end = dates[1] + datetime.timedelta(days=1) if len(dates) == 2 else dates[0] + datetime.timedelta(days=1)
+
+    datetime_range = pd.date_range(start=date_start, periods=len(hours) + 1, end=date_end)
 
     day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, 0)
 
