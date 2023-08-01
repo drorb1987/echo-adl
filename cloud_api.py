@@ -63,6 +63,8 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     }
     respiration_columns = ['time', 'respiration', 'heart_rate']
     respiration_df = pd.DataFrame(res['data']['respirations']).rename(columns=respiration_mapper)
+    if not len(respiration_df):
+        return respiration_df
     return respiration_df[respiration_columns]
 
 def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
@@ -146,9 +148,16 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
     
     analyse_body = []
 
+    prev_res = {}
+
     for res in response.json():
+        if not prev_res:
+            prev_res = res.copy()
+            continue
         curr_date = pd.to_datetime(res['timeStamp']).date()
+        prev_sleep_df = warp_sleep_df(prev_res)
         sleep_df = warp_sleep_df(res)
+        sleep_df = pd.concat([prev_sleep_df, sleep_df], axis=0, ignore_index=True)
         sleep_df, time_dict = daily_adl.get_day_night_times(sleep_df)
         night_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Night')
         day_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Day')
@@ -156,13 +165,17 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
         day_restlessness = daily_adl.get_restlessness(sleep_df, time_dict, 'Day')
 
         # location
+        prev_location_df = warp_location_df(prev_res)
         location_df = warp_location_df(res)
+        location_df = pd.concat([prev_location_df, location_df], axis=0, ignore_index=True)
         location_df = daily_adl.create_consecutive_df(location_df)
         number_out_of_bed, night_out_of_bed_duration, location_counter = daily_adl.count_out_of_bed_loaction_sleep(sleep_df, location_df, time_dict, 'Night')
         daily_location_distribution = daily_adl.get_location_distribution(location_df, time_dict, 'Day', bed_included=True)
 
         # respiration
+        prev_respiration_df = warp_respiration_df(prev_res)
         respiration_df = warp_respiration_df(res)
+        respiration_df = pd.concat([prev_respiration_df, respiration_df], axis=0, ignore_index=True)
         average_respiration = daily_adl.get_average_respiration(respiration_df, time_dict, 'Night')
         average_heartrate = daily_adl.get_average_heartrate(respiration_df, time_dict, 'Night')
 
@@ -174,6 +187,8 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
         # alerts
         events_counter = daily_adl.get_number_events(alerts_df, time_dict, 'Day')
         alone_time = daily_adl.get_total_alone_time(visitors_df, time_dict, 'Day')
+
+        prev_res = res.copy()
 
         analyse_params = {
             "deviceId": device_id,
@@ -263,7 +278,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: 
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
     df = pd.concat([df, df_cols])
-    sleep_status, activity_status, alone_status, fall_status, acute_fall_status = monthly_adl.get_monthly_stats(df)
+    sleep_status, activity_status, alone_status, fall_status, acute_fall_status, total_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
@@ -294,7 +309,8 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: 
                 "sleepQuality": sleep_status["sleep_quality"],
                 "activityLevel": activity_status["activity_level"],
                 "aloneTime": alone_status["alone_time"],
-                "fallRisk": fall_status["fall_risk"]
+                "fallRisk": fall_status["fall_risk"],
+                "totalStatus": total_status
                 }
         }
     }
