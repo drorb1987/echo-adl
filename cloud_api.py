@@ -36,6 +36,14 @@ def enumOpcodeReadIdConfig() -> str:
     return DeviceId
 
 def warp_sleep_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the sleep sessions and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the sleep sessions
+    """
     sleep_mapper = {
         'sessionStartTime': 'start',
         'sessionStopTime': 'stop',
@@ -46,6 +54,14 @@ def warp_sleep_df(res: dict) -> pd.DataFrame:
     return sleep_df[sleep_columns]
     
 def warp_location_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the locations and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the locations
+    """
     location_mapper = {
         'locationStartTime': 'start',
         'locationStopTime': 'stop',
@@ -56,6 +72,14 @@ def warp_location_df(res: dict) -> pd.DataFrame:
     return location_df[location_columns]
 
 def warp_respiration_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the respiration and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the respiration
+    """
     respiration_mapper = {
         'respirationTime': 'time',
         'respirationRate': 'respiration',
@@ -68,6 +92,14 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     return respiration_df[respiration_columns]
 
 def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
+    """Warping the response to handle the gait and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the gait
+    """
     start_time = pd.to_datetime(time_dict['Day']['start'].date())
     times = pd.date_range(
         start=start_time,
@@ -87,6 +119,14 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     return gait_df[gait_columns]
 
 def warp_alerts_df(response: dict) -> pd.DataFrame:
+    """Warping the response to handle the alerts and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the alerts
+    """
     data = list(map(lambda x: x['data'], response))
     df = pd.DataFrame(data)
     if not len(df):
@@ -97,6 +137,14 @@ def warp_alerts_df(response: dict) -> pd.DataFrame:
     return df
 
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
+    """Warping the response to handle the visitors and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the visitors
+    """
     visitors_indices = (alerts_df['type'] == 'VisitorsIn') | (alerts_df['type'] == 'VisitorsOut')
     df = alerts_df[visitors_indices]
     start_time = []
