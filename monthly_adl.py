@@ -1,13 +1,13 @@
 import pandas as pd
 from typing import Any
 
-RED = 0
-RED_UP = 1
-RED_DOWN = 2
-YELLOW = 3
-YELLOW_UP = 4
-YELLOW_DOWN = 5
-GREEN = 6
+GREEN = 0
+YELLOW = 1
+YELLOW_UP = 2
+YELLOW_DOWN = 3
+RED = 4
+RED_UP = 5
+RED_DOWN = 6
 
 STD_LOWER_TH = 1
 STD_UPPER_TH = 2
@@ -198,4 +198,11 @@ def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bo
     alone_status = alone_time(analyse)
     fall_status = fall_risk(analyse)
     acute_fall_status = acute_fall(analyse["numberOfAcuteFalls"])
-    return sleep_status, activity_status, alone_status, fall_status, acute_fall_status
+    total_dict = {
+        'sleep_quality': sleep_status['sleep_quality'],
+        'activity_level': activity_status['activity_level'],
+        'alone_time': alone_status['alone_time'],
+        'fall_risk': fall_status['fall_risk']
+    }
+    total_status = get_total_status(total_dict)
+    return sleep_status, activity_status, alone_status, fall_status, acute_fall_status, total_status

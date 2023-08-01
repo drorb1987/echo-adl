@@ -278,7 +278,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: 
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
     df = pd.concat([df, df_cols])
-    sleep_status, activity_status, alone_status, fall_status, acute_fall_status = monthly_adl.get_monthly_stats(df)
+    sleep_status, activity_status, alone_status, fall_status, acute_fall_status, total_status = monthly_adl.get_monthly_stats(df)
 
     monthly_adl_params = {
         "deviceId": device_id,
@@ -309,7 +309,8 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: 
                 "sleepQuality": sleep_status["sleep_quality"],
                 "activityLevel": activity_status["activity_level"],
                 "aloneTime": alone_status["alone_time"],
-                "fallRisk": fall_status["fall_risk"]
+                "fallRisk": fall_status["fall_risk"],
+                "totalStatus": total_status
                 }
         }
     }
