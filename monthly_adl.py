@@ -123,7 +123,7 @@ def sleep_quality(analyse: pd.DataFrame) -> dict[str, int]:
     quality['respiration'] = calc_statistics(analyse["averageNightlyRR"])
     quality['sleep_quality'] = get_total_status(quality)
     return quality
-    
+
 
 def activity_level(analyse: pd.DataFrame) -> dict:
     """Calculate the activity level

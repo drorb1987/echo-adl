@@ -22,6 +22,7 @@ url_get_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/d
 
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
+
 def enumOpcodeReadPubKeyConfig() -> str:
     with open(publicKeyFile, 'r') as file:
         publicKey = file.read().replace('\n', '')
@@ -36,6 +37,7 @@ def enumOpcodeReadIdConfig() -> str:
 
     print(DeviceId)
     return DeviceId
+
 
 def warp_sleep_df(res: dict) -> pd.DataFrame:
     """Warping the response to handle the sleep sessions and convert it to data-frame
@@ -55,6 +57,7 @@ def warp_sleep_df(res: dict) -> pd.DataFrame:
     sleep_df = pd.DataFrame(res['data']['sleepMonitoring']).rename(columns=sleep_mapper)
     return sleep_df[sleep_columns]
     
+
 def warp_location_df(res: dict) -> pd.DataFrame:
     """Warping the response to handle the locations and convert it to data-frame
 
@@ -72,6 +75,7 @@ def warp_location_df(res: dict) -> pd.DataFrame:
     location_columns = ['start', 'stop', 'location']
     location_df = pd.DataFrame(res['data']['locations']['objects']).rename(columns=location_mapper)
     return location_df[location_columns]
+
 
 def warp_respiration_df(res: dict) -> pd.DataFrame:
     """Warping the response to handle the respiration and convert it to data-frame
@@ -92,6 +96,7 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     if not len(respiration_df):
         return respiration_df
     return respiration_df[respiration_columns]
+
 
 def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     """Warping the response to handle the gait and convert it to data-frame
@@ -120,6 +125,7 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     gait_df['time'] = times
     return gait_df[gait_columns]
 
+
 def warp_alerts_df(response: dict) -> pd.DataFrame:
     """Warping the response to handle the alerts and convert it to data-frame
 
@@ -137,6 +143,7 @@ def warp_alerts_df(response: dict) -> pd.DataFrame:
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date_time', ignore_index=True)
     return df
+
 
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     """Warping the response to handle the visitors and convert it to data-frame
@@ -156,6 +163,7 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
             start_time.append(df.loc[i, 'date_time'])
             stop_time.append(df.loc[i+1, 'date_time'])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
+
 
 def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
     """API for daily analysis ADL
