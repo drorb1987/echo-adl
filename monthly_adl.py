@@ -1,5 +1,4 @@
 import pandas as pd
-from typing import Any
 
 GREEN = 0
 YELLOW = 1
@@ -184,14 +183,14 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     return quality
 
 
-def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bool]:
+def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bool, int]:
     """Get the monthly statuses of all the measurements
 
     Args:
         analyse (pd.DataFrame): a data frame contains the daily data from the cloud API
 
     Returns:
-        tuple[dict, dict, dict, dict, bool]: all the statuses for all the measurements and the acute fall flag
+        tuple[dict, dict, dict, dict, bool, int]: all the statuses for all the measurements and the acute fall flag
     """
     sleep_status = sleep_quality(analyse)
     activity_status = activity_level(analyse)
