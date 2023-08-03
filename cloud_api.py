@@ -381,10 +381,10 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode')
-    parser.add_argument('-d', '--device_id')
-    parser.add_argument('-f', '--from_date')
-    parser.add_argument('-t', '--to_date')
+    parser.add_argument('-m', '--mode', help="The analysis mode, needs to be day/month", choices=['day', 'month'])
+    parser.add_argument('-d', '--device_id', help="The device ID")
+    parser.add_argument('-f', '--from_date', help="The date from which to start the analysis, needs to be in format yyyy-mm-dd")
+    parser.add_argument('-t', '--to_date', help="The date by which the analysis ends, needs to be in format yyyy-mm-dd")
     args = parser.parse_args()
     if args.mode == "day":
         daily_analyse_api(args.device_id, args.from_date, args.to_date)

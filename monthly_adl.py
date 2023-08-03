@@ -11,6 +11,11 @@ RED_DOWN = 6
 
 
 def get_parameters() -> dict:
+    """Get the configurable parameters from the json file
+
+    Returns:
+        dict: a dictionary for the parameters
+    """
     json_file = './parameters.json'
     with open(json_file, "r") as f:
         parameters = json.load(f)
@@ -32,6 +37,7 @@ def get_total_status(d: dict) -> int:
         status = RED
     elif YELLOW in statuses or YELLOW_DOWN in statuses or YELLOW_UP in statuses:
         status = YELLOW
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 
@@ -60,6 +66,7 @@ def calc_statistics(analyse_param: pd.Series) -> int:
         status = RED_DOWN
     elif any(analyse_param.rolling(3).apply(lambda x: all((mean-std_lower_th*std > x) & (x > mean-std_upper_th*std))).dropna()):
         status = YELLOW_DOWN
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 
@@ -80,6 +87,7 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
         status = YELLOW
     elif number >= num_th:
         status = RED
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 

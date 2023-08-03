@@ -24,7 +24,8 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     for t in ['start', 'stop', 'time']:
         if t in df:
-            df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+            # df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+            df[t] = pd.to_datetime(df[t])
             if t != 'stop':
                 df = df.sort_values(t, ignore_index=True)
     return df
@@ -264,6 +265,7 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['total_time'].sum())
 
 
@@ -281,6 +283,7 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float((rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum())
 
 
@@ -297,6 +300,7 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     rel_df = rel_df[rel_df['location'] != 'Bed']
+    # casting the value to float for writing the value to the api with the correct type
     return len(rel_df), float(rel_df['total_time'].sum())
 
 
@@ -333,6 +337,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['respiration'].mean())
 
 
@@ -350,6 +355,7 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
 
@@ -366,6 +372,7 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
+    # casting the value to float for writing the value to the api with the correct type
     return float(total_time_of_day - rel_df['total_time'].sum())
 
 
@@ -413,6 +420,7 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None, None, None
+    # casting the values to float for writing the values to the api with the correct type
     avg_sessions = float(rel_df['number_of_sessions'].mean())
     avg_time = float(rel_df['total_time'].mean())
     avg_distance = float(rel_df['total_distance'].mean())
