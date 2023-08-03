@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import requests
 import argparse
 import pandas as pd
@@ -20,6 +22,7 @@ url_get_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/d
 
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
+
 def enumOpcodeReadPubKeyConfig() -> str:
     with open(publicKeyFile, 'r') as file:
         publicKey = file.read().replace('\n', '')
@@ -35,7 +38,16 @@ def enumOpcodeReadIdConfig() -> str:
     print(DeviceId)
     return DeviceId
 
+
 def warp_sleep_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the sleep sessions and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the sleep sessions
+    """
     sleep_mapper = {
         'sessionStartTime': 'start',
         'sessionStopTime': 'stop',
@@ -45,7 +57,16 @@ def warp_sleep_df(res: dict) -> pd.DataFrame:
     sleep_df = pd.DataFrame(res['data']['sleepMonitoring']).rename(columns=sleep_mapper)
     return sleep_df[sleep_columns]
     
+
 def warp_location_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the locations and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the locations
+    """
     location_mapper = {
         'locationStartTime': 'start',
         'locationStopTime': 'stop',
@@ -55,7 +76,16 @@ def warp_location_df(res: dict) -> pd.DataFrame:
     location_df = pd.DataFrame(res['data']['locations']['objects']).rename(columns=location_mapper)
     return location_df[location_columns]
 
+
 def warp_respiration_df(res: dict) -> pd.DataFrame:
+    """Warping the response to handle the respiration and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the respiration
+    """
     respiration_mapper = {
         'respirationTime': 'time',
         'respirationRate': 'respiration',
@@ -67,7 +97,16 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
         return respiration_df
     return respiration_df[respiration_columns]
 
+
 def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
+    """Warping the response to handle the gait and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the gait
+    """
     start_time = pd.to_datetime(time_dict['Day']['start'].date())
     times = pd.date_range(
         start=start_time,
@@ -86,7 +125,16 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     gait_df['time'] = times
     return gait_df[gait_columns]
 
+
 def warp_alerts_df(response: dict) -> pd.DataFrame:
+    """Warping the response to handle the alerts and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the alerts
+    """
     data = list(map(lambda x: x['data'], response))
     df = pd.DataFrame(data)
     if not len(df):
@@ -96,7 +144,16 @@ def warp_alerts_df(response: dict) -> pd.DataFrame:
     df = df.sort_values('date_time', ignore_index=True)
     return df
 
+
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
+    """Warping the response to handle the visitors and convert it to data-frame
+
+    Args:
+        res (dict): request response from the api
+
+    Returns:
+        pd.DataFrame: A data-frame to handle the visitors
+    """
     visitors_indices = (alerts_df['type'] == 'VisitorsIn') | (alerts_df['type'] == 'VisitorsOut')
     df = alerts_df[visitors_indices]
     start_time = []
@@ -107,20 +164,19 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
             stop_time.append(df.loc[i+1, 'date_time'])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
-def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+
+def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     """API for daily analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
-        timezone (str, optional): timezone for dates. Defaults to "Israel".
     """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date,
-        "timeZone": timezone
+        "to": to_date
     }
     headers = {
         'x-api-key': api_key
@@ -231,20 +287,18 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
         print("Posting to analysis report")
 
 
-def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     """API for monthly analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
-        timezone (str, optional): timezone for dates. Defaults to "Israel".
     """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date,
-        "timeZone": timezone
+        "to": to_date
     }
     headers = {
         'x-api-key': api_key,
@@ -327,15 +381,14 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode')
-    parser.add_argument('-d', '--device_id')
-    parser.add_argument('-f', '--from_date')
-    parser.add_argument('-t', '--to_date')
-    parser.add_argument('-z', '--timezone', default="Israel")
+    parser.add_argument('-m', '--mode', help="The analysis mode, needs to be day/month", choices=['day', 'month'])
+    parser.add_argument('-d', '--device_id', help="The device ID")
+    parser.add_argument('-f', '--from_date', help="The date from which to start the analysis, needs to be in format yyyy-mm-dd")
+    parser.add_argument('-t', '--to_date', help="The date by which the analysis ends, needs to be in format yyyy-mm-dd")
     args = parser.parse_args()
     if args.mode == "day":
-        daily_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
+        daily_analyse_api(args.device_id, args.from_date, args.to_date)
     elif args.mode == "month":
-        monthly_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
+        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
     else:
         print("The mode needs to be: day/month")

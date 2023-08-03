@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Any
+import json
 
 GREEN = 0
 YELLOW = 1
@@ -9,9 +9,17 @@ RED = 4
 RED_UP = 5
 RED_DOWN = 6
 
-STD_LOWER_TH = 1
-STD_UPPER_TH = 2
-NUM_TH = 5
+
+def get_parameters() -> dict:
+    """Get the configurable parameters from the json file
+
+    Returns:
+        dict: a dictionary for the parameters
+    """
+    json_file = './parameters.json'
+    with open(json_file, "r") as f:
+        parameters = json.load(f)
+    return parameters
 
 
 def get_total_status(d: dict) -> int:
@@ -29,6 +37,7 @@ def get_total_status(d: dict) -> int:
         status = RED
     elif YELLOW in statuses or YELLOW_DOWN in statuses or YELLOW_UP in statuses:
         status = YELLOW
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 
@@ -41,19 +50,23 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     Returns:
         int: status of the parameter
     """
+    parameters = get_parameters()
+    std_upper_th = parameters["Thresholds"]["STD_UPPER_TH"]
+    std_lower_th = parameters["Thresholds"]["STD_LOWER_TH"]
     mean = analyse_param.mean()
     std = analyse_param.std()
     status = GREEN
     if not std or pd.isna(std):
         return status
-    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+STD_UPPER_TH*std)).dropna()):
+    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+std_upper_th*std)).dropna()):
         status = RED_UP
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+STD_LOWER_TH*std < x) & (x < mean+STD_UPPER_TH*std))).dropna()):
+    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+std_lower_th*std < x) & (x < mean+std_upper_th*std))).dropna()):
         status = YELLOW_UP
-    elif any(analyse_param.rolling(2).apply(lambda x: all(x < mean-STD_UPPER_TH*std)).dropna()):
+    elif any(analyse_param.rolling(2).apply(lambda x: all(x < mean-std_upper_th*std)).dropna()):
         status = RED_DOWN
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean-STD_LOWER_TH*std > x) & (x > mean-STD_UPPER_TH*std))).dropna()):
+    elif any(analyse_param.rolling(3).apply(lambda x: all((mean-std_lower_th*std > x) & (x > mean-std_upper_th*std))).dropna()):
         status = YELLOW_DOWN
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 
@@ -66,12 +79,15 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
     Returns:
         int: status of the parameter
     """
+    parameters = get_parameters()
+    num_th = parameters["Thresholds"]["NUM_TH"]
     status = GREEN
     number = analyse_param[-10:].sum()
-    if 0 < number < NUM_TH:
+    if 0 < number < num_th:
         status = YELLOW
-    elif number >= NUM_TH:
+    elif number >= num_th:
         status = RED
+    # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
 
@@ -124,7 +140,7 @@ def sleep_quality(analyse: pd.DataFrame) -> dict[str, int]:
     quality['respiration'] = calc_statistics(analyse["averageNightlyRR"])
     quality['sleep_quality'] = get_total_status(quality)
     return quality
-    
+
 
 def activity_level(analyse: pd.DataFrame) -> dict:
     """Calculate the activity level
@@ -184,14 +200,14 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     return quality
 
 
-def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bool]:
+def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bool, int]:
     """Get the monthly statuses of all the measurements
 
     Args:
         analyse (pd.DataFrame): a data frame contains the daily data from the cloud API
 
     Returns:
-        tuple[dict, dict, dict, dict, bool]: all the statuses for all the measurements and the acute fall flag
+        tuple[dict, dict, dict, dict, bool, int]: all the statuses for all the measurements and the acute fall flag
     """
     sleep_status = sleep_quality(analyse)
     activity_status = activity_level(analyse)

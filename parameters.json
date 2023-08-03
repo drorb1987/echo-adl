@@ -1,0 +1,8 @@
+{
+    "Thresholds":
+    {
+        "STD_LOWER_TH": 1,
+        "STD_UPPER_TH": 2,
+        "NUM_TH": 5
+    }
+}

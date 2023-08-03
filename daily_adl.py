@@ -24,7 +24,8 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     for t in ['start', 'stop', 'time']:
         if t in df:
-            df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+            # df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+            df[t] = pd.to_datetime(df[t])
             if t != 'stop':
                 df = df.sort_values(t, ignore_index=True)
     return df
@@ -174,7 +175,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     Returns:
         pd.DataFrame: a dataframe that contains the day/night column
     """
-    if 'day_or_night' in df:
+    if 'day_or_night' in df or not len(df):
         return df
     df['day_or_night'] = [None] * len(df)
     start = 'start' if 'start' in df else 'time'
@@ -264,6 +265,7 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['total_time'].sum())
 
 
@@ -281,6 +283,7 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float((rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum())
 
 
@@ -297,6 +300,7 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     rel_df = rel_df[rel_df['location'] != 'Bed']
+    # casting the value to float for writing the value to the api with the correct type
     return len(rel_df), float(rel_df['total_time'].sum())
 
 
@@ -333,6 +337,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['respiration'].mean())
 
 
@@ -350,6 +355,7 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
 
@@ -366,6 +372,7 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
+    # casting the value to float for writing the value to the api with the correct type
     return float(total_time_of_day - rel_df['total_time'].sum())
 
 
@@ -413,105 +420,10 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None, None, None
+    # casting the values to float for writing the values to the api with the correct type
     avg_sessions = float(rel_df['number_of_sessions'].mean())
     avg_time = float(rel_df['total_time'].mean())
     avg_distance = float(rel_df['total_distance'].mean())
     avg_speed = avg_distance / avg_time if avg_time else 0
     tot_distance = float(rel_df['total_distance'].sum())
-    # return avg_sessions, avg_time, avg_distance
     return tot_distance, avg_speed, avg_sessions, avg_distance
-
-
-if __name__ == '__main__':
-    # sleep sessions
-    sleep_sessions = {
-    'start': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
-    'stop': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00'],
-    'restless': [0.8, 0.4, 0.9, 0.2]
-    }
-
-    sleep_df = pd.DataFrame(sleep_sessions)
-    sleep_df, time_dict = get_day_night_times(sleep_df)
-    print(f"Day Time: start: {time_dict['Day']['start']}, end: {time_dict['Day']['end']}")
-    print(f"Night Time: start: {time_dict['Night']['start']}, end: {time_dict['Night']['end']}")
-
-    night_sleep_duration = get_sleep_duration(sleep_df, time_dict, 'Night')
-    day_sleep_duration = get_sleep_duration(sleep_df, time_dict, 'Day')
-    night_restlessness = get_restlessness(sleep_df, time_dict, 'Night')
-    day_restlessness = get_restlessness(sleep_df, time_dict, 'Day')
-    print(f"The night sleep duration: {night_sleep_duration}, The night restlessness: {night_restlessness}")
-    print(f"The day sleep duration: {day_sleep_duration}, The day restlessness: {day_restlessness}")
-
-    # location
-    location_data = {
-        'start': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
-        'stop': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00'],
-        'location': ['Kitchen', 'Bed', 'Bedroom', 'Entry']
-    }
-    location_df = pd.DataFrame(location_data)
-    night_out_of_bed_number, night_out_of_bed_duration = get_out_of_bed_number(location_df, time_dict, 'Night')
-    night_location_distribution = get_location_distribution(location_df, time_dict, 'Night')
-    day_location_distribution = get_location_distribution(location_df, time_dict, 'Day')
-    print(f"Number of 'out of bed': {night_out_of_bed_number}, duration of 'out of bed': {night_out_of_bed_duration}")
-    print(f"The distribution of locations of out of bed at night: {night_location_distribution}")
-    print(f"The distribution of locations of out of bed at day: {day_location_distribution}")
-
-    # respiration
-    respiration_data = {
-        'time': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
-        'respiration': [30.2, 50.0, 45.1, 37.6]
-    }
-    respiration_df = pd.DataFrame(respiration_data)
-    night_average_respiration = get_average_respiration(respiration_df, time_dict, 'Night')
-    print(f"The average respiration at night: {night_average_respiration}")
-
-    # visitors
-    visitors_data = {
-        'VisitorsIn': ['2023-01-05 10:30:00', '2023-01-05 15:45:00', '2023-01-05 22:15:00', '2023-01-06 18:20:00'],
-        'VisitorsOut': ['2023-01-05 11:00:00', '2023-01-05 18:00:00', '2023-01-06 07:15:00', '2023-01-06 19:00:00']
-    }
-    mapper_visitors = {'VisitorsIn': 'start', 'VisitorsOut': 'stop'}
-    visitors_df = pd.DataFrame(visitors_data).rename(columns=mapper_visitors)
-    total_alone_time = get_total_alone_time(visitors_df, time_dict, 'Day')
-    print(f"The total alone time in day is: {total_alone_time}")
-
-    # events
-    events_data = {
-        'time': ['2023-01-05 10:30:00', '2023-01-05 23:00:00', '2023-01-05 23:15:00', '2023-01-06 04:00:00', '2023-01-06 05:30:00', '2023-01-06 10:00:00', '2023-01-06 14:00:00'],
-        'type': ['AcuteFall', 'AcuteFall', 'ModerateFall', 'LyingOnFloor', 'ModerateFall', 'LyingOnFloor', 'AcuteFall']
-    }
-    events_df = pd.DataFrame(events_data)
-    night_events = get_number_events(events_df, time_dict, 'Night')
-    day_events = get_number_events(events_df, time_dict, 'Day')
-    print(f"The number of the events at night is: {dict(night_events)}")
-    print(f"The number of the events at day is: {dict(day_events)}")
-
-    # gait
-    gait_data = {
-        'time': pd.date_range(
-            start=time_dict['Night']['start'],
-            freq='1H',
-            end=time_dict['Day']['end'] - datetime.timedelta(hours=1)
-            ),
-        'activity': [0, 0, 1, 1, 0, 0, 3, 1, 2, 0, 1, 1, 2, 2, 3, 0, 0, 1, 0, 1, 1, 2, 3, 2],
-        'number_of_sessions': [3, 1, 0, 0, 0, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 0, 1, 4, 5, 1, 2, 2, 1, 0],
-        'total_time': [20, 10, 0, 0, 0, 15, 0, 10, 20, 30, 15, 12, 0, 10, 20, 0, 5, 40, 35, 10, 12, 14, 3, 0],
-        'total_distance': [50, 20, 0, 0, 0, 25, 0, 5, 30, 40, 25, 17, 0, 12, 22, 0, 4, 80, 50, 20, 22, 30, 5, 0]
-    }
-    # 'activityLevel': [0, 0, 1, 1, 0, 0, 3, 1, 2, 0, 1, 1, 2, 2, 3, 0, 0, 1, 0, 1, 1, 2, 3, 2],
-    # 'numberOfWalkingSessions': [3, 1, 0, 0, 0, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 0, 1, 4, 5, 1, 2, 2, 1, 0],
-    # 'totalWalkDuration': [20, 10, 0, 0, 0, 15, 0, 10, 20, 30, 15, 12, 0, 10, 20, 0, 5, 40, 35, 10, 12, 14, 3, 0],
-    # 'totalWalkDistance': [50, 20, 0, 0, 0, 25, 0, 5, 30, 40, 25, 17, 0, 12, 22, 0, 4, 80, 50, 20, 22, 30, 5, 0]
-    gait_df = pd.DataFrame(gait_data)
-    night_sedentary = get_sedentary(gait_df, time_dict, 'Night')
-    day_sedentary = get_sedentary(gait_df, time_dict, 'Day')
-    print(f"The number of the sedentary at night is: {night_sedentary}")
-    print(f"The number of the sedentary at day is: {day_sedentary}")
-    # average_gait_sessions, average_gait_time, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
-    total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance = get_gait_average(gait_df, time_dict, 'Day')
-    print(f"The daily average number of gait sessions is: {average_gait_sessions}")
-    print(f"The daily average time of gait sessions is: {average_gait_speed}")
-    print(f"The daily average distance of gait sessions is: {average_gait_distance}")
-    
-    # sleep location
-    count_out_of_bed_loaction_sleep(sleep_df, location_df, 'Night')
