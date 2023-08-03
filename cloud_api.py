@@ -165,20 +165,18 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
 
-def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     """API for daily analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
-        timezone (str, optional): timezone for dates. Defaults to "Israel".
     """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date,
-        "timeZone": timezone
+        "to": to_date
     }
     headers = {
         'x-api-key': api_key
@@ -289,20 +287,18 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timezone: st
         print("Posting to analysis report")
 
 
-def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timezone: str="Israel") -> None:
+def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     """API for monthly analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
-        timezone (str, optional): timezone for dates. Defaults to "Israel".
     """
     querystring = {
         "deviceId": device_id,
         "from": from_date,
-        "to": to_date,
-        "timeZone": timezone
+        "to": to_date
     }
     headers = {
         'x-api-key': api_key,
@@ -389,11 +385,10 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--device_id')
     parser.add_argument('-f', '--from_date')
     parser.add_argument('-t', '--to_date')
-    parser.add_argument('-z', '--timezone', default="Israel")
     args = parser.parse_args()
     if args.mode == "day":
-        daily_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
+        daily_analyse_api(args.device_id, args.from_date, args.to_date)
     elif args.mode == "month":
-        monthly_analyse_api(args.device_id, args.from_date, args.to_date, args.timezone)
+        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
     else:
         print("The mode needs to be: day/month")

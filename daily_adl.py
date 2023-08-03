@@ -418,5 +418,4 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     avg_distance = float(rel_df['total_distance'].mean())
     avg_speed = avg_distance / avg_time if avg_time else 0
     tot_distance = float(rel_df['total_distance'].sum())
-    # return avg_sessions, avg_time, avg_distance
     return tot_distance, avg_speed, avg_sessions, avg_distance

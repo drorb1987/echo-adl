@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 
 GREEN = 0
 YELLOW = 1
@@ -8,9 +9,12 @@ RED = 4
 RED_UP = 5
 RED_DOWN = 6
 
-STD_LOWER_TH = 1
-STD_UPPER_TH = 2
-NUM_TH = 5
+
+def get_parameters() -> dict:
+    json_file = './parameters.json'
+    with open(json_file, "r") as f:
+        parameters = json.load(f)
+    return parameters
 
 
 def get_total_status(d: dict) -> int:
@@ -40,18 +44,21 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     Returns:
         int: status of the parameter
     """
+    parameters = get_parameters()
+    std_upper_th = parameters["Thresholds"]["STD_UPPER_TH"]
+    std_lower_th = parameters["Thresholds"]["STD_LOWER_TH"]
     mean = analyse_param.mean()
     std = analyse_param.std()
     status = GREEN
     if not std or pd.isna(std):
         return status
-    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+STD_UPPER_TH*std)).dropna()):
+    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+std_upper_th*std)).dropna()):
         status = RED_UP
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+STD_LOWER_TH*std < x) & (x < mean+STD_UPPER_TH*std))).dropna()):
+    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+std_lower_th*std < x) & (x < mean+std_upper_th*std))).dropna()):
         status = YELLOW_UP
-    elif any(analyse_param.rolling(2).apply(lambda x: all(x < mean-STD_UPPER_TH*std)).dropna()):
+    elif any(analyse_param.rolling(2).apply(lambda x: all(x < mean-std_upper_th*std)).dropna()):
         status = RED_DOWN
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean-STD_LOWER_TH*std > x) & (x > mean-STD_UPPER_TH*std))).dropna()):
+    elif any(analyse_param.rolling(3).apply(lambda x: all((mean-std_lower_th*std > x) & (x > mean-std_upper_th*std))).dropna()):
         status = YELLOW_DOWN
     return int(status)
 
@@ -65,11 +72,13 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
     Returns:
         int: status of the parameter
     """
+    parameters = get_parameters()
+    num_th = parameters["Thresholds"]["NUM_TH"]
     status = GREEN
     number = analyse_param[-10:].sum()
-    if 0 < number < NUM_TH:
+    if 0 < number < num_th:
         status = YELLOW
-    elif number >= NUM_TH:
+    elif number >= num_th:
         status = RED
     return int(status)
 
