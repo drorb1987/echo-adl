@@ -10,7 +10,7 @@ HOURS_PER_DAY = 24
 SPLITS_PER_HOUR = 2
 NUM_DAYS = 2
 
-MAX_AWAKE = 3
+MAX_AWAKE = 3 # maximum awake time between sleep sessions
 
 
 def validate_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -40,6 +40,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: a dataframe that gets the consecutive time
     """
+    # remove the non-string handling
     df = validate_df(df)
     name = df.columns[2]
     is_object = df[name].dtype == object
@@ -165,6 +166,12 @@ def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int, int]:
     return night_start+1, night_end
 
 
+def find_closest_time(df: pd.DataFrame, start_time: pd.Timestamp, end_time: pd.Timestamp):
+    start_idx = np.argmin(abs(df['start'] - start_time))
+    end_idx = np.argmin(abs(df['stop'] - end_time))
+    return df.loc[start_idx, 'start'], df.loc[end_idx, 'stop']
+
+
 def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     """Update the dataframe by adding a column for day/night
 
@@ -200,6 +207,7 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     df = validate_df(df)
 
+    # get the dates from the dataframe and check that there is 1 or 2 dates
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     if len(dates) > 2:
         dates = dates[-2:]
@@ -207,23 +215,27 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
 
     hours = making_hours_array(df, dates)
 
-    night_start, night_end = clustering_day_night(hours)
+    night_start_idx, night_end_idx = clustering_day_night(hours)
 
+    # need to check if the one date case can be removed (one date is only for validation)
     date_start = dates[0] if len(dates) == 2 else dates[0] - datetime.timedelta(days=1)
     date_end = dates[1] + datetime.timedelta(days=1) if len(dates) == 2 else dates[0] + datetime.timedelta(days=1)
 
     datetime_range = pd.date_range(start=date_start, periods=len(hours) + 1, end=date_end)
-
+     
     day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, 0)
 
+    # find the closest datetime to night start and night end from the sleep sessions
+    night_start, night_end = find_closest_time(df, datetime_range[night_start_idx], datetime_range[night_end_idx])
+
     night_time = {
-        'start': datetime_range[night_start],
-        'end': datetime_range[night_end]
+        'start': night_start,
+        'end': night_end
     }
 
     day_time = {
-        'start': datetime_range[night_end] + datetime.timedelta(days=day_delta[0]),
-        'end': datetime_range[night_start] + datetime.timedelta(days=day_delta[1])
+        'start': night_end + datetime.timedelta(days=day_delta[0]),
+        'end': night_start + datetime.timedelta(days=day_delta[1])
     }
 
     time_dict  = {
@@ -403,7 +415,7 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
         float: returns the number of sedentary
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return sum(rel_df['activity'] == 'Low')
+    return int(sum(rel_df['activity'] == 'Low'))
 
 
 def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
