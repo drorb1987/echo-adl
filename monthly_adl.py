@@ -57,7 +57,7 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     std = analyse_param.std()
     status = GREEN
     if not std or pd.isna(std):
-        return status
+        return int(status)
     if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+std_upper_th*std)).dropna()):
         status = RED_UP
     elif any(analyse_param.rolling(3).apply(lambda x: all((mean+std_lower_th*std < x) & (x < mean+std_upper_th*std))).dropna()):
