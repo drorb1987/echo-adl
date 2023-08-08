@@ -139,6 +139,7 @@ def sleep_quality(analyse: pd.DataFrame) -> dict[str, int]:
     quality['day_sleep'] = calc_statistics(analyse["sleepDurationDuringDay"])
     quality['location_dist'] = calc_location_distribution(analyse["locationDistributionOfOutOfBedDuringNight"])
     quality['respiration'] = calc_statistics(analyse["averageNightlyRR"])
+    quality['heart_rate'] = calc_statistics(analyse["averageNightlyHR"])
     quality['sleep_quality'] = get_total_status(quality)
     return quality
 

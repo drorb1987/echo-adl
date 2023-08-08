@@ -261,6 +261,7 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
                 "locationDistributionOfOutOfBedDuringNight": dict(location_counter),
 
                 "averageNightlyRR": average_respiration,
+                "averageNightlyHR": average_heartrate,
                 "locationDistributionDuringDay": daily_location_distribution,
                 "sedentaryDurationDuringDay": daily_sedantery,
                 "aloneTime": alone_time,
@@ -322,6 +323,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         "sleepDurationDuringDay",
         "locationDistributionOfOutOfBedDuringNight",
         "averageNightlyRR",
+        "averageNightlyHR",
         "locationDistributionDuringDay",
         "sedentaryDurationDuringDay",
         "aloneTime",
@@ -347,6 +349,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
             "sleepDurationDuringDay": sleep_status["day_sleep"],
             "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
             "averageNightlyRR": sleep_status["respiration"],
+            "averageNightlyHR": sleep_status["heart_rate"],
             "locationDistributionDuringDay": activity_status["location_distribution"],
             "sedentaryDurationDuringDay": activity_status["sedentary"],
             "aloneTime": alone_status["alone_time"],
