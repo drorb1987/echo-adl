@@ -367,6 +367,7 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
         return None
+    rel_df = rel_df[rel_df['heart_rate'] != 0]
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
