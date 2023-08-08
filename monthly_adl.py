@@ -58,14 +58,15 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     status = GREEN
     if not std or pd.isna(std):
         return int(status)
-    if any(analyse_param.rolling(2).apply(lambda x: all(x > mean+std_upper_th*std)).dropna()):
+    # put the rolling parameters in json
+    if all(analyse_param[-2:] > mean + std_upper_th * std):
         status = RED_UP
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean+std_lower_th*std < x) & (x < mean+std_upper_th*std))).dropna()):
+    elif all(analyse_param[-3:] > mean + std_lower_th * std) or analyse_param.iloc[-1] > mean + std_upper_th * std:
         status = YELLOW_UP
-    elif any(analyse_param.rolling(2).apply(lambda x: all(x < mean-std_upper_th*std)).dropna()):
+    elif all(analyse_param[-2:] < mean - std_upper_th * std):
         status = RED_DOWN
-    elif any(analyse_param.rolling(3).apply(lambda x: all((mean-std_lower_th*std > x) & (x > mean-std_upper_th*std))).dropna()):
-        status = YELLOW_DOWN
+    elif all(analyse_param[-3:] < mean - std_lower_th * std) or analyse_param.iloc[-1] < mean - std_upper_th * std:
+        status = YELLOW_UP
     # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
@@ -138,6 +139,7 @@ def sleep_quality(analyse: pd.DataFrame) -> dict[str, int]:
     quality['day_sleep'] = calc_statistics(analyse["sleepDurationDuringDay"])
     quality['location_dist'] = calc_location_distribution(analyse["locationDistributionOfOutOfBedDuringNight"])
     quality['respiration'] = calc_statistics(analyse["averageNightlyRR"])
+    quality['heart_rate'] = calc_statistics(analyse["averageNightlyHR"])
     quality['sleep_quality'] = get_total_status(quality)
     return quality
 
@@ -196,7 +198,7 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     quality['number_out_of_bed'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
     quality['walking_speed'] = calc_statistics(gait_df[2]/gait_df[1])
-    quality['fall_risk'] = get_total_status(quality)
+    quality['fall_risk'] = get_total_status(quality) # add acute fall
     return quality
 
 

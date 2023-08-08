@@ -9,16 +9,16 @@ import daily_adl, monthly_adl
 DeviceIdFile = "./Certificates/Certificate/DeviceId.key"
 publicKeyFile = "./Certificates/Certificate/publicKey.key"
 
-url_extended_report     = "https://backend-dev.echocare-ncs.com/api/device/extendedReport"
-url_get_extended_report = "https://backend-dev.echocare-ncs.com/api/device/getExtendedReport"
+url_extended_report     = "https://backend-dev.echocare-ncs.com/api/device/extendedReport" # set device data
+url_get_extended_report = "https://backend-dev.echocare-ncs.com/api/device/getExtendedReport" # get device data
 
-url_get_emergenies_report = "https://backend-dev.echocare-ncs.com/api/device/getEmergencies"
+url_get_emergenies_report = "https://backend-dev.echocare-ncs.com/api/device/getEmergencies" # get alerts
 
-url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport"
-url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport"
+url_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/setAnalyzedReport" # set daily adl
+url_get_extended_analyze_report = "https://backend-dev.echocare-ncs.com/api/device/getAnalyzedReport" # get daily adl
 
-url_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/setStatisticsReport"
-url_get_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/getStatisticsReport"
+url_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/setStatisticsReport" # set monthly adl
+url_get_extended_statistics_report = "https://backend-dev.echocare-ncs.com/api/device/getStatisticsReport" # get monthly adl
 
 api_key = "wH2JyNCYzeoxmdJdHlizvzVneyDB92B4yXOyPtTH4ulP07uWIPoUDiRY32i1ZKVwodGw6Ecgu1zEYmC0HElntLoPLp1J58bGwXcJ6VJgfYszi8BBOTHa6DBfg6qb2Dwi"
 
@@ -97,8 +97,8 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
         return respiration_df
     return respiration_df[respiration_columns]
 
-
-def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
+# change the number of hours
+def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
     """Warping the response to handle the gait and convert it to data-frame
 
     Args:
@@ -126,7 +126,7 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     return gait_df[gait_columns]
 
 
-def warp_alerts_df(response: dict) -> pd.DataFrame:
+def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
     """Warping the response to handle the alerts and convert it to data-frame
 
     Args:
@@ -261,6 +261,7 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
                 "locationDistributionOfOutOfBedDuringNight": dict(location_counter),
 
                 "averageNightlyRR": average_respiration,
+                "averageNightlyHR": average_heartrate,
                 "locationDistributionDuringDay": daily_location_distribution,
                 "sedentaryDurationDuringDay": daily_sedantery,
                 "aloneTime": alone_time,
@@ -322,6 +323,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         "sleepDurationDuringDay",
         "locationDistributionOfOutOfBedDuringNight",
         "averageNightlyRR",
+        "averageNightlyHR",
         "locationDistributionDuringDay",
         "sedentaryDurationDuringDay",
         "aloneTime",
@@ -347,6 +349,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
             "sleepDurationDuringDay": sleep_status["day_sleep"],
             "locationDistributionOfOutOfBedDuringNight": sleep_status["location_dist"],
             "averageNightlyRR": sleep_status["respiration"],
+            "averageNightlyHR": sleep_status["heart_rate"],
             "locationDistributionDuringDay": activity_status["location_distribution"],
             "sedentaryDurationDuringDay": activity_status["sedentary"],
             "aloneTime": alone_status["alone_time"],
