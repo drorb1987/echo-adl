@@ -137,17 +137,19 @@ def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
     """
     data = list(map(lambda x: x['data'], response))
     df = pd.DataFrame(data)
+    updated_df = pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
     if not len(df):
-        return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
+        return updated_df
     df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
     df['date'] = pd.to_datetime(df['date'])
+    # adding fall from bed and long lying on the floor (from description to type)
     fall_from_bed = df['description'] == 'Fall from bed'
     df[fall_from_bed]['type'] = 'Fall from bed'
     long_lying_on_floor = df['description'] == 'Lying on the floor for a long time'
     df[long_lying_on_floor]['type'] = 'Long lying on the floor'
-    updated_df = pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
-    for idx in range(1, len(df)):
-        if df.loc[idx, 'type'] == df.loc[idx-1, 'type'] & \
+    # handling consecutive alerts
+    for idx in range(len(df)):
+        if not idx or df.loc[idx, 'type'] == df.loc[idx-1, 'type'] & \
             df.loc[idx, 'date_time'] - df.loc[idx-1, 'date_time'] < pd.Timedelta(seconds=30):
             continue
         updated_df = pd.concat([updated_df, df.loc[idx:idx]], axis=0, ignore_index=True)
