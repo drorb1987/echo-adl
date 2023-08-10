@@ -137,12 +137,24 @@ def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
     """
     data = list(map(lambda x: x['data'], response))
     df = pd.DataFrame(data)
+    updated_df = pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
     if not len(df):
-        return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
+        return updated_df
     df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
     df['date'] = pd.to_datetime(df['date'])
-    df = df.sort_values('date_time', ignore_index=True)
-    return df
+    # adding fall from bed and long lying on the floor (from description to type)
+    fall_from_bed = df['description'] == 'Fall from bed'
+    df[fall_from_bed]['type'] = 'Fall from bed'
+    long_lying_on_floor = df['description'] == 'Lying on the floor for a long time'
+    df[long_lying_on_floor]['type'] = 'Long lying on the floor'
+    # handling consecutive alerts
+    for idx in range(len(df)):
+        if not idx or df.loc[idx, 'type'] == df.loc[idx-1, 'type'] & \
+            df.loc[idx, 'date_time'] - df.loc[idx-1, 'date_time'] < pd.Timedelta(seconds=30):
+            continue
+        updated_df = pd.concat([updated_df, df.loc[idx:idx]], axis=0, ignore_index=True)
+    updated_df = updated_df.sort_values('date_time', ignore_index=True)
+    return updated_df
 
 
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
@@ -265,9 +277,10 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
                 "locationDistributionDuringDay": daily_location_distribution,
                 "sedentaryDurationDuringDay": daily_sedantery,
                 "aloneTime": alone_time,
-                "numberOfAcuteFalls": events_counter['acuteFall'],
-                "numberOfModerateFalls": events_counter['moderateFall'],
-                "numberOfLyingOnFloor": events_counter['lyingOnFloor'],
+                "numberOfAcuteFalls": events_counter['AcuteFall'],
+                "numberOfModerateFalls": events_counter['ModerateFall'],
+                "numberOfLyingOnFloor": events_counter['Long lying on the floor'],
+                "numberOfFallFromBed": events_counter['Fall from bed'],
                 "gaitStatisticsDuringDay": [total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance]
 
             }
@@ -330,6 +343,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         "numberOfAcuteFalls",
         "numberOfModerateFalls",
         "numberOfLyingOnFloor",
+        "numberOfFallFromBed",
         "gaitStatisticsDuringDay"
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
@@ -356,6 +370,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
             "numberOfAcuteFalls": acute_fall_status,
             "numberOfModerateFalls": fall_status["moderate_fall"],
             "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
+            "numberOfFallFromBed": fall_status["fall_from_bed"],
             "gaitStatisticsDuringDay": [
                 activity_status["walking_total_distance"],
                 activity_status["walking_speed"],
