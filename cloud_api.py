@@ -141,6 +141,10 @@ def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
         return pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
     df['date_time'] = pd.to_datetime(df['date'] + ' ' + df['time'])
     df['date'] = pd.to_datetime(df['date'])
+    fall_from_bed = df['description'] == 'Fall from bed'
+    df[fall_from_bed]['type'] = 'Fall from bed'
+    long_lying_on_floor = df['description'] == 'Lying on the floor for a long time'
+    df[long_lying_on_floor]['type'] = 'Long lying on the floor'
     df = df.sort_values('date_time', ignore_index=True)
     return df
 
@@ -265,9 +269,10 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
                 "locationDistributionDuringDay": daily_location_distribution,
                 "sedentaryDurationDuringDay": daily_sedantery,
                 "aloneTime": alone_time,
-                "numberOfAcuteFalls": events_counter['acuteFall'],
-                "numberOfModerateFalls": events_counter['moderateFall'],
-                "numberOfLyingOnFloor": events_counter['lyingOnFloor'],
+                "numberOfAcuteFalls": events_counter['AcuteFall'],
+                "numberOfModerateFalls": events_counter['ModerateFall'],
+                "numberOfLyingOnFloor": events_counter['Long lying on the floor'],
+                "numberOfFallFromBed": events_counter['Fall from bed'],
                 "gaitStatisticsDuringDay": [total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance]
 
             }
@@ -330,6 +335,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         "numberOfAcuteFalls",
         "numberOfModerateFalls",
         "numberOfLyingOnFloor",
+        "numberOfFallFromBed",
         "gaitStatisticsDuringDay"
         ])
     df = pd.DataFrame([res['data'] for res in response_get.json()])
@@ -356,6 +362,7 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
             "numberOfAcuteFalls": acute_fall_status,
             "numberOfModerateFalls": fall_status["moderate_fall"],
             "numberOfLyingOnFloor": fall_status["long_lying_on_floor"],
+            "numberOfFallFromBed": fall_status["fall_from_bed"],
             "gaitStatisticsDuringDay": [
                 activity_status["walking_total_distance"],
                 activity_status["walking_speed"],
