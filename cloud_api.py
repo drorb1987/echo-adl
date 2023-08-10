@@ -145,8 +145,14 @@ def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
     df[fall_from_bed]['type'] = 'Fall from bed'
     long_lying_on_floor = df['description'] == 'Lying on the floor for a long time'
     df[long_lying_on_floor]['type'] = 'Long lying on the floor'
-    df = df.sort_values('date_time', ignore_index=True)
-    return df
+    updated_df = pd.DataFrame(columns=['type', 'location', 'description', 'date', 'time', 'date_time'])
+    for idx in range(1, len(df)):
+        if df.loc[idx, 'type'] == df.loc[idx-1, 'type'] & \
+            df.loc[idx, 'date_time'] - df.loc[idx-1, 'date_time'] < pd.Timedelta(seconds=30):
+            continue
+        updated_df = pd.concat([updated_df, df.loc[idx:idx]], axis=0, ignore_index=True)
+    updated_df = updated_df.sort_values('date_time', ignore_index=True)
+    return updated_df
 
 
 def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
