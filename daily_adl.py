@@ -104,8 +104,8 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
         cond = (row['start'] < rel_location_df['start']) & \
             (row['stop'] > rel_location_df['stop']) & \
             (rel_location_df['location'] != 'Bed')
-        if rel_location_df[cond]:
-            number_out_of_bed += 1
+        if any(rel_location_df[cond]):
+            number_out_of_bed += rel_location_df[cond]['location'].count()
             out_of_bed_duration += rel_location_df[cond]['total_time'].sum()
             for location in rel_location_df[cond]['location'].unique():
                 counter[location] += sum(rel_location_df[cond]['location'] == location)

@@ -149,7 +149,7 @@ def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
     df[long_lying_on_floor]['type'] = 'Long lying on the floor'
     # handling consecutive alerts
     for idx in range(len(df)):
-        if not idx or df.loc[idx, 'type'] == df.loc[idx-1, 'type'] & \
+        if not idx or df.loc[idx, 'type'] == df.loc[idx-1, 'type'] and \
             df.loc[idx, 'date_time'] - df.loc[idx-1, 'date_time'] < pd.Timedelta(seconds=30):
             continue
         updated_df = pd.concat([updated_df, df.loc[idx:idx]], axis=0, ignore_index=True)

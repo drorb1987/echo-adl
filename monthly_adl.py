@@ -193,6 +193,7 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     quality['acute_fall'] = acute_fall(analyse["numberOfAcuteFalls"])
     quality['moderate_fall'] = calc_statistics_by_number(analyse["numberOfModerateFalls"])
     quality['long_lying_on_floor'] = calc_statistics_by_number(analyse["numberOfLyingOnFloor"])
+    quality['fall_from_bed'] = calc_statistics_by_number(analyse["numberOfFallFromBed"])
     quality['sedantry'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
     quality['night_restless'] = calc_statistics(analyse["restlessness"])
     quality['number_out_of_bed'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
