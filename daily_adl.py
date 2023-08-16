@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime
 from collections import Counter, defaultdict
+from typing import Dict, Tuple
 
 AWAKE = 0
 SLEEP = 1
@@ -77,7 +78,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
 def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
                                     location_df: pd.DataFrame,
                                     time_dict: dict,
-                                    day_or_night: str) -> tuple[int, defaultdict]:
+                                    day_or_night: str) -> Tuple[int, defaultdict]:
     """Count the number of out of bed (location/sleep)
 
     Args:
@@ -141,7 +142,7 @@ def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
     return hours
 
 
-def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int, int]:
+def clustering_day_night(hours: pd.DatetimeIndex) -> Tuple[int, int]:
     """Clustering for the day/night
 
     Args:
@@ -195,7 +196,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     return df
 
 
-def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[str, pd.Timestamp]]]:
+def get_day_night_times(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Dict[str, pd.Timestamp]]]:
     """Get the day and night times from the sleep sessions data frame
 
     Args:
@@ -304,7 +305,7 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
     return float((rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum())
 
 
-def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[int, float]:
+def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Tuple[int, float]:
     """Get the number of out of bed and the duration
 
     Args:
@@ -323,7 +324,7 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     return len(rel_df), float(rel_df['total_time'].sum())
 
 
-def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> dict[str, float]:
+def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> Dict[str, float]:
     """Get location distribution during day/night
 
     Args:
@@ -434,7 +435,7 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
     return int(sum(rel_df['activity'] == 1)) 
 
 
-def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
+def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Tuple[float, float, float, float]:
     """Get gait average per day/night
 
     Args:
