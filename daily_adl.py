@@ -108,8 +108,8 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
             number_out_of_bed += rel_location_df[cond]['location'].count()
             out_of_bed_duration += rel_location_df[cond]['total_time'].sum()
             for location in rel_location_df[cond]['location'].unique():
-                counter[location] += sum(rel_location_df[cond]['location'] == location)
-    return number_out_of_bed, out_of_bed_duration, counter
+                counter[location] += int(sum(rel_location_df[cond]['location'] == location))
+    return int(number_out_of_bed), float(out_of_bed_duration), counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -262,7 +262,7 @@ def get_relevant_df(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> pd.
     """
     assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
     if not len(df):
-        return None
+        return df
     df = validate_df(df)
     df = day_night_update_df(df, time_dict)
     return df[df['day_or_night'] == day_or_night]
@@ -353,7 +353,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     Returns:
         float: returns an average respiration
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
     if not len(rel_df):
         return None
     # casting the value to float for writing the value to the api with the correct type
@@ -371,10 +371,10 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     Returns:
         float: returns an average heart-rate
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
+    rel_df = rel_df[rel_df['heart_rate'] != 0]
     if not len(rel_df):
         return None
-    rel_df = rel_df[rel_df['heart_rate'] != 0]
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
@@ -410,9 +410,10 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
         Counter: returns counter that counts the number of each event
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    event_names = ['AcuteFall', 'ModerateFall', 'Long lying on the floor', 'Fall from bed']
     if not len(rel_df):
-        return None
-    return Counter(rel_df['type'])
+        return {event: 0 for event in event_names}
+    return {event: int(sum(rel_df['type'] == event)) for event in event_names}
 
 
 def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
