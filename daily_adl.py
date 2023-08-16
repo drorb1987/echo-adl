@@ -210,7 +210,8 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
     # get the dates from the dataframe and check that there is 1 or 2 dates
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     if len(dates) > 2:
-        dates = dates[-2:]
+        # dates = dates[-2:]
+        dates = dates[:2]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -260,6 +261,8 @@ def get_relevant_df(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> pd.
         pd.DataFrame: the relevant day/night dataframe
     """
     assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
+    if not len(df):
+        return None
     df = validate_df(df)
     df = day_night_update_df(df, time_dict)
     return df[df['day_or_night'] == day_or_night]
@@ -416,7 +419,8 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
         float: returns the number of sedentary
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return int(sum(rel_df['activity'] == 'Low'))
+    # 1 is Low activity
+    return int(sum(rel_df['activity'] == 1)) 
 
 
 def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
@@ -432,11 +436,11 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
-        return None, None, None
+        return None, None, None, None
     # casting the values to float for writing the values to the api with the correct type
     avg_sessions = float(rel_df['number_of_sessions'].mean())
-    avg_time = float(rel_df['total_time'].mean())
-    avg_distance = float(rel_df['total_distance'].mean())
+    avg_time = float((rel_df['total_time'] / rel_df['number_of_sessions']).mean())
+    avg_distance = float((rel_df['total_distance'] / rel_df['number_of_sessions']).mean())
     avg_speed = avg_distance / avg_time if avg_time else 0
     tot_distance = float(rel_df['total_distance'].sum())
     return tot_distance, avg_speed, avg_sessions, avg_distance
