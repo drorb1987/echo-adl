@@ -108,8 +108,8 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
             number_out_of_bed += rel_location_df[cond]['location'].count()
             out_of_bed_duration += rel_location_df[cond]['total_time'].sum()
             for location in rel_location_df[cond]['location'].unique():
-                counter[location] += sum(rel_location_df[cond]['location'] == location)
-    return number_out_of_bed, out_of_bed_duration, counter
+                counter[location] += int(sum(rel_location_df[cond]['location'] == location))
+    return int(number_out_of_bed), float(out_of_bed_duration), counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -210,7 +210,8 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
     # get the dates from the dataframe and check that there is 1 or 2 dates
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     if len(dates) > 2:
-        dates = dates[-2:]
+        # dates = dates[-2:]
+        dates = dates[:2]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -260,6 +261,8 @@ def get_relevant_df(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> pd.
         pd.DataFrame: the relevant day/night dataframe
     """
     assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
+    if not len(df):
+        return df
     df = validate_df(df)
     df = day_night_update_df(df, time_dict)
     return df[df['day_or_night'] == day_or_night]
@@ -277,6 +280,8 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['total_time'].sum())
 
@@ -311,6 +316,8 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
         tuple[int, float]: returns the number of out of bed times and the duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None, None
     rel_df = rel_df[rel_df['location'] != 'Bed']
     # casting the value to float for writing the value to the api with the correct type
     return len(rel_df), float(rel_df['total_time'].sum())
@@ -346,7 +353,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     Returns:
         float: returns an average respiration
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
     if not len(rel_df):
         return None
     # casting the value to float for writing the value to the api with the correct type
@@ -364,10 +371,10 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     Returns:
         float: returns an average heart-rate
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
+    rel_df = rel_df[rel_df['heart_rate'] != 0]
     if not len(rel_df):
         return None
-    rel_df = rel_df[rel_df['heart_rate'] != 0]
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
@@ -385,6 +392,8 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(total_time_of_day - rel_df['total_time'].sum())
 
@@ -401,7 +410,10 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
         Counter: returns counter that counts the number of each event
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return Counter(rel_df['type'])
+    event_names = ['AcuteFall', 'ModerateFall', 'Long lying on the floor', 'Fall from bed']
+    if not len(rel_df):
+        return {event: 0 for event in event_names}
+    return {event: int(sum(rel_df['type'] == event)) for event in event_names}
 
 
 def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -416,7 +428,10 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
         float: returns the number of sedentary
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return int(sum(rel_df['activity'] == 'Low'))
+    if not len(rel_df):
+        return None
+    # 1 is Low activity
+    return int(sum(rel_df['activity'] == 1)) 
 
 
 def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
@@ -432,11 +447,11 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     if not len(rel_df):
-        return None, None, None
+        return None, None, None, None
     # casting the values to float for writing the values to the api with the correct type
     avg_sessions = float(rel_df['number_of_sessions'].mean())
-    avg_time = float(rel_df['total_time'].mean())
-    avg_distance = float(rel_df['total_distance'].mean())
+    avg_time = float((rel_df['total_time'] / rel_df['number_of_sessions']).mean())
+    avg_distance = float((rel_df['total_distance'] / rel_df['number_of_sessions']).mean())
     avg_speed = avg_distance / avg_time if avg_time else 0
     tot_distance = float(rel_df['total_distance'].sum())
     return tot_distance, avg_speed, avg_sessions, avg_distance
