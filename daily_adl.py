@@ -280,6 +280,8 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['total_time'].sum())
 
