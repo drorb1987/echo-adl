@@ -314,6 +314,8 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
         tuple[int, float]: returns the number of out of bed times and the duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None, None
     rel_df = rel_df[rel_df['location'] != 'Bed']
     # casting the value to float for writing the value to the api with the correct type
     return len(rel_df), float(rel_df['total_time'].sum())
@@ -388,6 +390,8 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(total_time_of_day - rel_df['total_time'].sum())
 
@@ -404,6 +408,8 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
         Counter: returns counter that counts the number of each event
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     return Counter(rel_df['type'])
 
 
@@ -419,6 +425,8 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
         float: returns the number of sedentary
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None
     # 1 is Low activity
     return int(sum(rel_df['activity'] == 1)) 
 
