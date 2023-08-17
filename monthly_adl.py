@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+from typing import Dict, Tuple
 
 GREEN = 0
 YELLOW = 1
@@ -92,7 +93,7 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
     return int(status)
 
 
-def calc_location_distribution(analyse_param: pd.Series) -> dict[str, int]:
+def calc_location_distribution(analyse_param: pd.Series) -> Dict[str, int]:
     """Calculate the locations distribution over a month
 
     Args:
@@ -120,7 +121,7 @@ def acute_fall(analyse: pd.Series) -> bool:
     return False
 
 
-def sleep_quality(analyse: pd.DataFrame) -> dict[str, int]:
+def sleep_quality(analyse: pd.DataFrame) -> Dict[str, int]:
     """Calculate the sleep quality
 
     Args:
@@ -203,7 +204,7 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     return quality
 
 
-def get_monthly_stats(analyse: pd.DataFrame) -> tuple[dict, dict, dict, dict, bool, int]:
+def get_monthly_stats(analyse: pd.DataFrame) -> Tuple[dict, dict, dict, dict, bool, int]:
     """Get the monthly statuses of all the measurements
 
     Args:
