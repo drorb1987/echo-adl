@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime
 from collections import Counter, defaultdict
+from typing import Dict, Tuple
 
 AWAKE = 0
 SLEEP = 1
@@ -14,7 +15,7 @@ MAX_AWAKE = 3 # maximum awake time between sleep sessions
 
 
 def validate_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate dataframe, chage to timestamp format and sort.
+    """Validate dataframe, change to timestamp format and sort.
 
     Args:
         df (pd.DataFrame): a dataframe
@@ -77,7 +78,7 @@ def create_consecutive_df(df: pd.DataFrame) -> pd.DataFrame:
 def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
                                     location_df: pd.DataFrame,
                                     time_dict: dict,
-                                    day_or_night: str) -> tuple[int, defaultdict]:
+                                    day_or_night: str) -> Tuple[int, float, defaultdict]:
     """Count the number of out of bed (location/sleep)
 
     Args:
@@ -87,10 +88,16 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
         day_or_night (str): can get the values 'Day' or 'Night'
 
     Returns:
-        tuple[int, defaultdict]: number of out of bed and counter dictionary for locations
+        tuple[int, float, defaultdict]: number of out of bed, duration of out of bed,
+                                        and counter dictionary for locations
     """
     rel_sleep_df = get_relevant_df(sleep_df, time_dict, day_or_night)
     rel_location_df = get_relevant_df(location_df, time_dict, day_or_night)
+    # if the df is empty this can either mean the person didn't sleep (out of home or maybe stayed
+    # awake in an extreme case) or that there is a data issue. In either case it makes sense to return
+    # none and treat the data as missing for these metrics.
+    if not len(rel_sleep_df) or not len(rel_location_df):
+        return None, None, None
     awake_df = pd.DataFrame(
         {
             'start': rel_sleep_df[:-1]['stop'].to_numpy(),
@@ -99,6 +106,7 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
     )
     number_out_of_bed = 0
     out_of_bed_duration = 0
+    # returns 0 for key which isn't present
     counter = defaultdict(int)
     for _, row in awake_df.iterrows():
         cond = (row['start'] <= rel_location_df['start']) & \
@@ -108,8 +116,8 @@ def count_out_of_bed_loaction_sleep(sleep_df: pd.DataFrame,
             number_out_of_bed += rel_location_df[cond]['location'].count()
             out_of_bed_duration += rel_location_df[cond]['total_time'].sum()
             for location in rel_location_df[cond]['location'].unique():
-                counter[location] += sum(rel_location_df[cond]['location'] == location)
-    return number_out_of_bed, out_of_bed_duration, counter
+                counter[location] += int(sum(rel_location_df[cond]['location'] == location))
+    return int(number_out_of_bed), float(out_of_bed_duration), counter
 
 
 def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
@@ -141,7 +149,7 @@ def making_hours_array(df: pd.DataFrame, dates: pd.DatetimeIndex) -> np.ndarray:
     return hours
 
 
-def clustering_day_night(hours: pd.DatetimeIndex) -> tuple[int, int]:
+def clustering_day_night(hours: pd.DatetimeIndex) -> Tuple[int, int]:
     """Clustering for the day/night
 
     Args:
@@ -195,7 +203,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
     return df
 
 
-def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[str, pd.Timestamp]]]:
+def get_day_night_times(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Dict[str, pd.Timestamp]]]:
     """Get the day and night times from the sleep sessions data frame
 
     Args:
@@ -206,11 +214,13 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
     """
 
     df = validate_df(df)
-
+    if not len(df):
+        return df, None
     # get the dates from the dataframe and check that there is 1 or 2 dates
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     if len(dates) > 2:
-        dates = dates[-2:]
+        # dates = dates[-2:]
+        dates = dates[:2]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -238,7 +248,7 @@ def get_day_night_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, dict[
         'end': night_start + datetime.timedelta(days=day_delta[1])
     }
 
-    time_dict  = {
+    time_dict = {
         'Day': day_time,
         'Night': night_time
     }
@@ -260,6 +270,14 @@ def get_relevant_df(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> pd.
         pd.DataFrame: the relevant day/night dataframe
     """
     assert day_or_night in ['Day', 'Night'], "day_or_night can get values 'Day' or 'Night'"
+    if not len(df):
+        df['total_time'] = 0.0
+        df['day_or_night'] = None
+        return df
+    if time_dict is None:
+        df['total_time'] = 0.0
+        df['day_or_night'] = None
+        return df
     df = validate_df(df)
     df = day_night_update_df(df, time_dict)
     return df[df['day_or_night'] == day_or_night]
@@ -277,6 +295,11 @@ def get_sleep_duration(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> 
         float: The sleep duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    # how do we know if it's zero because the person didn't sleep or because we have no
+    # data? Again, it seems we need to create thresholds for a certain minimum amount of data
+    # to consider. Maybe if the person is out-of-home too long we treat it as a special case
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['total_time'].sum())
 
@@ -299,7 +322,7 @@ def get_restlessness(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> fl
     return float((rel_df['restless'] * rel_df['total_time']).sum() / rel_df['total_time'].sum())
 
 
-def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[int, float]:
+def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Tuple[int, float]:
     """Get the number of out of bed and the duration
 
     Args:
@@ -311,12 +334,14 @@ def get_out_of_bed_number(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
         tuple[int, float]: returns the number of out of bed times and the duration in hours
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
+    if not len(rel_df):
+        return None, None
     rel_df = rel_df[rel_df['location'] != 'Bed']
     # casting the value to float for writing the value to the api with the correct type
     return len(rel_df), float(rel_df['total_time'].sum())
 
 
-def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> dict[str, float]:
+def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: str, bed_included: bool=False) -> Dict[str, float]:
     """Get location distribution during day/night
 
     Args:
@@ -328,6 +353,9 @@ def get_location_distribution(df: pd.DataFrame, time_dict: dict, day_or_night: s
     Returns:
         dict[str, float]: returns a dictionary for the locations distribution
     """
+    # if the DataFrame is empty it returns an empty dictionary
+    # It shouldn't really be possible to be empty in a natural way unless the person
+    # is "sleeping" the entire day
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     location_dist = rel_df.groupby('location')['total_time'].sum().to_dict()
     if not bed_included and 'Bed' in location_dist:
@@ -346,7 +374,7 @@ def get_average_respiration(df: pd.DataFrame, time_dict: dict, day_or_night: str
     Returns:
         float: returns an average respiration
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
     if not len(rel_df):
         return None
     # casting the value to float for writing the value to the api with the correct type
@@ -364,10 +392,10 @@ def get_average_heartrate(df: pd.DataFrame, time_dict: dict, day_or_night: str) 
     Returns:
         float: returns an average heart-rate
     """
-    rel_df = get_relevant_df(df, time_dict, day_or_night)
+    rel_df = get_relevant_df(df, time_dict, day_or_night).dropna()
+    rel_df = rel_df[rel_df['heart_rate'] != 0]
     if not len(rel_df):
         return None
-    rel_df = rel_df[rel_df['heart_rate'] != 0]
     # casting the value to float for writing the value to the api with the correct type
     return float(rel_df['heart_rate'].mean())
 
@@ -385,11 +413,13 @@ def get_total_alone_time(df: pd.DataFrame, time_dict: dict, day_or_night: str) -
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
     total_time_of_day = (time_dict[day_or_night]['end'] - time_dict[day_or_night]['start']).total_seconds() / 3600.0
+    if not len(rel_df):
+        return None
     # casting the value to float for writing the value to the api with the correct type
     return float(total_time_of_day - rel_df['total_time'].sum())
 
 
-def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Counter:
+def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Dict:
     """Get number of events during day/night
 
     Args:
@@ -401,7 +431,10 @@ def get_number_events(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> C
         Counter: returns counter that counts the number of each event
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return Counter(rel_df['type'])
+    event_names = ['AcuteFall', 'ModerateFall', 'Long lying on the floor', 'Fall from bed']
+    if not len(rel_df):
+        return {event: 0 for event in event_names}
+    return {event: int(sum(rel_df['type'] == event)) for event in event_names}
 
 
 def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float:
@@ -416,10 +449,13 @@ def get_sedentary(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> float
         float: returns the number of sedentary
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    return int(sum(rel_df['activity'] == 'Low'))
+    if not len(rel_df) or time_dict is None:
+        return None
+    # 1 is Low activity
+    return int(sum(rel_df['activity'] == 1)) 
 
 
-def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tuple[float, float, float, float]:
+def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> Tuple[float, float, float, float]:
     """Get gait average per day/night
 
     Args:
@@ -431,12 +467,14 @@ def get_gait_average(df: pd.DataFrame, time_dict: dict, day_or_night: str) -> tu
         tuple[float, float, float, float]: returns total distance, average speed, average number of sessions and average distance.
     """
     rel_df = get_relevant_df(df, time_dict, day_or_night)
-    if not len(rel_df):
-        return None, None, None
+    if not len(rel_df) or time_dict is None:
+        return None, None, None, None
     # casting the values to float for writing the values to the api with the correct type
     avg_sessions = float(rel_df['number_of_sessions'].mean())
-    avg_time = float(rel_df['total_time'].mean())
-    avg_distance = float(rel_df['total_distance'].mean())
-    avg_speed = avg_distance / avg_time if avg_time else 0
+    cond = rel_df['number_of_sessions'] > 0
+    # if there are no sessions then all these are nan except tot distance
+    avg_time = float((rel_df.loc[cond, 'total_time'] / rel_df.loc[cond, 'number_of_sessions']).mean())
+    avg_distance = float((rel_df.loc[cond, 'total_distance'] / rel_df.loc[cond, 'number_of_sessions']).mean())
+    avg_speed = avg_distance / avg_time if avg_time else None
     tot_distance = float(rel_df['total_distance'].sum())
     return tot_distance, avg_speed, avg_sessions, avg_distance
