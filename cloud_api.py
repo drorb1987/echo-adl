@@ -177,13 +177,14 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
 
-def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
+def daily_analyse_api(device_id: str, from_date: str, to_date: str, timestamp: str=None) -> None:
     """API for daily analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
+        timestamp (str, optional): the timestamp for writing the data, in case None it's the current timestamp. Defaults to None.
     """
     querystring = {
         "deviceId": device_id,
@@ -285,6 +286,9 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
 
             }
         }
+        
+        if timestamp:
+            analyse_params['timeStamp'] = timestamp
 
         analyse_body.append(analyse_params)
 
@@ -301,13 +305,15 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         print("Posting to analysis report")
 
 
-def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
+def monthly_analyse_api(device_id: str, from_date: str, to_date: str, timestamp: str=None, debug=False) -> None:
     """API for monthly analysis ADL
 
     Args:
         device_id (str): device id
         from_date (str): start date
         to_date (str): end date
+        timestamp (str, optional): the timestamp for writing the data, in case None it's the current timestamp. Defaults to None.
+        debug (bool, optional): flag for debug. Defaults to False.
     """
     querystring = {
         "deviceId": device_id,
@@ -387,6 +393,9 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         }
     }
 
+    if timestamp:
+        monthly_adl_params['timeStamp'] = timestamp
+
     response_post = requests.request(
         "POST",
         url_extended_statistics_report,
@@ -396,6 +405,16 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     assert response_post.status_code == 200, "There is a problem in posting the monthly statistics"
     print("Posting to monthly statistics report")
 
+    if debug:
+        response_month_get = requests.request(
+            "GET",
+            url_get_extended_statistics_report,
+            headers=headers,
+            params=querystring
+        )
+
+        print(response_month_get.text)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -403,10 +422,12 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--device_id', help="The device ID")
     parser.add_argument('-f', '--from_date', help="The date from which to start the analysis, needs to be in format yyyy-mm-dd")
     parser.add_argument('-t', '--to_date', help="The date by which the analysis ends, needs to be in format yyyy-mm-dd")
+    parser.add_argument('--timestamp', default=None)
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.mode == "day":
-        daily_analyse_api(args.device_id, args.from_date, args.to_date)
+        daily_analyse_api(args.device_id, args.from_date, args.to_date, args.timestamp)
     elif args.mode == "month":
-        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
+        monthly_analyse_api(args.device_id, args.from_date, args.to_date, args.timestamp, args.debug)
     else:
         print("The mode needs to be: day/month")
