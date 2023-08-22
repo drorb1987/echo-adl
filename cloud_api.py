@@ -219,10 +219,7 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str, timestamp: s
 
     prev_res = {}
 
-    response_json = response.json()
-    # for res in response.json():
-    for i in range(20, len(response_json)):
-        res = response_json[i]
+    for res in response.json():
         if not prev_res:
             prev_res = res.copy()
             continue
