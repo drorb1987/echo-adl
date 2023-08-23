@@ -9,6 +9,7 @@ YELLOW_DOWN = 3
 RED = 4
 RED_UP = 5
 RED_DOWN = 6
+GRAY = 7
 
 
 def get_parameters() -> dict:
@@ -158,10 +159,10 @@ def activity_level(analyse: pd.DataFrame) -> dict:
     quality['sedentary'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
     quality['location_distribution'] = calc_location_distribution(analyse["locationDistributionDuringDay"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    quality['walking_total_distance'] = calc_statistics(gait_df[0])
-    quality['walking_speed'] = calc_statistics(gait_df[1])
-    quality['walking_sessions'] = calc_statistics(gait_df[2])
-    quality['walking_average_distance'] = calc_statistics(gait_df[3])
+    quality['walking_total_distance'] = calc_statistics(gait_df[0]) if len(gait_df) else GRAY
+    quality['walking_speed'] = calc_statistics(gait_df[1]) if len(gait_df) else GRAY
+    quality['walking_sessions'] = calc_statistics(gait_df[2]) if len(gait_df) else GRAY
+    quality['walking_average_distance'] = calc_statistics(gait_df[3]) if len(gait_df) else GRAY
     # walking_distance_per_session
     quality['activity_level'] = get_total_status(quality)
     return quality
@@ -199,7 +200,7 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     quality['night_restless'] = calc_statistics(analyse["restlessness"])
     quality['number_out_of_bed'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    quality['walking_speed'] = calc_statistics(gait_df[2]/gait_df[1])
+    quality['walking_speed'] = calc_statistics(gait_df[2]/gait_df[1]) if len(gait_df) else GRAY
     quality['fall_risk'] = get_total_status(quality) # add acute fall
     return quality
 
