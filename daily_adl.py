@@ -25,8 +25,10 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     for t in ['start', 'stop', 'time']:
         if t in df:
-            # df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
-            df[t] = pd.to_datetime(df[t])
+            if df[t][-1] == 'Z':
+                df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+            else:
+                df[t] = pd.to_datetime(df[t])
             if t != 'stop':
                 df = df.sort_values(t, ignore_index=True)
     return df
