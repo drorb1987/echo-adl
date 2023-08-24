@@ -5,6 +5,8 @@ import argparse
 import pandas as pd
 import datetime
 import daily_adl, monthly_adl
+from typing import Dict, Tuple, List
+import warnings
 
 DeviceIdFile = "./Certificates/Certificate/DeviceId.key"
 publicKeyFile = "./Certificates/Certificate/publicKey.key"
@@ -115,17 +117,22 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     }
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
+    try:
     start_time = pd.to_datetime(time_dict['Day']['start'].date())
     times = pd.date_range(
         start=start_time,
         freq='1H',
         end=start_time+datetime.timedelta(hours=len(gait_df)-1)
     )
+    except (KeyError, TypeError):
+        # no day night division
+        times = None
+        warnings.warn('No day/night division found!')
     gait_df['time'] = times
     return gait_df[gait_columns]
 
 
-def warp_alerts_df(response: list[dict]) -> pd.DataFrame:
+def warp_alerts_df(response: List[dict]) -> pd.DataFrame:
     """Warping the response to handle the alerts and convert it to data-frame
 
     Args:
@@ -226,9 +233,12 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
             prev_res = res.copy()
             continue
         curr_date = pd.to_datetime(res['timeStamp']).date()
+        # what to do if sleep is empty? right now each function basically checks the empty dataframe
+        # Since everything depends on the determination I think it makes sense to skip
         prev_sleep_df = warp_sleep_df(prev_res)
         sleep_df = warp_sleep_df(res)
         sleep_df = pd.concat([prev_sleep_df, sleep_df], axis=0, ignore_index=True)
+
         sleep_df, time_dict = daily_adl.get_day_night_times(sleep_df)
         night_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Night')
         day_sleep_duration = daily_adl.get_sleep_duration(sleep_df, time_dict, 'Day')
@@ -240,8 +250,10 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
         location_df = warp_location_df(res)
         location_df = pd.concat([prev_location_df, location_df], axis=0, ignore_index=True)
         location_df = daily_adl.create_consecutive_df(location_df)
-        number_out_of_bed, night_out_of_bed_duration, location_counter = daily_adl.count_out_of_bed_loaction_sleep(sleep_df, location_df, time_dict, 'Night')
-        daily_location_distribution = daily_adl.get_location_distribution(location_df, time_dict, 'Day', bed_included=True)
+        number_out_of_bed, night_out_of_bed_duration, location_counter = daily_adl.count_out_of_bed_loaction_sleep(
+                                                                         sleep_df, location_df, time_dict, 'Night')
+        daily_location_distribution = daily_adl.get_location_distribution(
+                                      location_df, time_dict, 'Day', bed_included=True)
 
         # respiration
         prev_respiration_df = warp_respiration_df(prev_res)
@@ -253,28 +265,40 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
         # gait
         gait_df = warp_gait_df(res, time_dict)
         daily_sedantery = daily_adl.get_sedentary(gait_df, time_dict, 'Day')
-        total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance = daily_adl.get_gait_average(gait_df, time_dict, 'Day')
+        total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance = \
+            daily_adl.get_gait_average(gait_df, time_dict, 'Day')
 
         # alerts
         events_counter = daily_adl.get_number_events(alerts_df, time_dict, 'Day')
         alone_time = daily_adl.get_total_alone_time(visitors_df, time_dict, 'Day')
 
         prev_res = res.copy()
+        # check that no issues will be caused by None
+        # what happens to goToSleepTime and wakeUpTime if no night is found?
+        # for now it returns some index but need to check edge cases
+        if location_counter is None:
+            loc_counter_return = None
+        else:
+            loc_counter_return = dict(location_counter)
 
+        if time_dict is None:
+            go_to_sleep_return = None
+            wake_up_return = None
+        else:
+            go_to_sleep_return = str(time_dict["Night"]["start"])
+            wake_up_return = str(time_dict["Night"]["end"])
         analyse_params = {
             "deviceId": device_id,
             "publicKey": public_key,
             "data": {
                 "sleepDuration": night_sleep_duration,
                 "restlessness": night_restlessness,
-                "goToSleepTime": str(time_dict["Night"]["start"]),
-                "wakUpTime": str(time_dict["Night"]["end"]),
+                "goToSleepTime": go_to_sleep_return,
+                "wakUpTime": wake_up_return,
                 "numberOfOutOfBedDuringNight": number_out_of_bed,
                 "durationOfOutOfBed": night_out_of_bed_duration,
                 "sleepDurationDuringDay": day_sleep_duration,
-
-                "locationDistributionOfOutOfBedDuringNight": dict(location_counter),
-
+                "locationDistributionOfOutOfBedDuringNight": loc_counter_return,
                 "averageNightlyRR": average_respiration,
                 "averageNightlyHR": average_heartrate,
                 "locationDistributionDuringDay": daily_location_distribution,
@@ -284,7 +308,8 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
                 "numberOfModerateFalls": events_counter['ModerateFall'],
                 "numberOfLyingOnFloor": events_counter['Long lying on the floor'],
                 "numberOfFallFromBed": events_counter['Fall from bed'],
-                "gaitStatisticsDuringDay": [total_gait_distance, average_gait_speed, average_gait_sessions, average_gait_distance]
+                "gaitStatisticsDuringDay": [total_gait_distance, average_gait_speed,
+                                            average_gait_sessions, average_gait_distance]
 
             }
         }
