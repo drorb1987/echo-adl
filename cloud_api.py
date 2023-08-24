@@ -118,12 +118,12 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
     try:
-    start_time = pd.to_datetime(time_dict['Day']['start'].date())
-    times = pd.date_range(
-        start=start_time,
-        freq='1H',
-        end=start_time+datetime.timedelta(hours=len(gait_df)-1)
-    )
+        start_time = pd.to_datetime(time_dict['Day']['start'].date())
+        times = pd.date_range(
+            start=start_time,
+            freq='1H',
+            end=start_time+datetime.timedelta(hours=len(gait_df)-1)
+        )
     except (KeyError, TypeError):
         # no day night division
         times = None
