@@ -25,10 +25,11 @@ def validate_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     for t in ['start', 'stop', 'time']:
         if t in df:
-            if df[t][-1] == 'Z':
-                df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
-            else:
-                df[t] = pd.to_datetime(df[t])
+            for d in df[t]:
+                if str(d)[-1] == 'Z':
+                    df[t] = pd.to_datetime(df[t]).dt.tz_localize(None)
+                else:
+                    df[t] = pd.to_datetime(df[t])
             if t != 'stop':
                 df = df.sort_values(t, ignore_index=True)
     return df
@@ -194,7 +195,7 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
         rel_time = (df[start] >= time_dict[day_or_night]['start']) & (df[stop] <= time_dict[day_or_night]['end'])
         df.loc[rel_time, 'day_or_night'] = day_or_night
     if 'start' in df:
-        df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[m]') / 60.0
+        df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[s]') / (60.0 * pd.Timedelta(minutes=1))
     return df
 
 
