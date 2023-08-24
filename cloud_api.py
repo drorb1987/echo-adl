@@ -98,7 +98,7 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     return respiration_df[respiration_columns]
 
 # change the number of hours
-def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
+def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     """Warping the response to handle the gait and convert it to data-frame
 
     Args:
@@ -107,12 +107,6 @@ def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A data-frame to handle the gait
     """
-    start_time = pd.to_datetime(time_dict['Day']['start'].date())
-    times = pd.date_range(
-        start=start_time,
-        freq='1H',
-        end=start_time+datetime.timedelta(hours=23)
-    )
     gait_mapper = {
         'numberOfWalkingSessions': 'number_of_sessions',
         'totalWalkDistance': 'total_distance',
@@ -121,7 +115,12 @@ def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
     }
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
-    assert len(gait_df) == 24, "Need to be data for the last 24 hours"
+    start_time = pd.to_datetime(time_dict['Day']['start'].date())
+    times = pd.date_range(
+        start=start_time,
+        freq='1H',
+        end=start_time+datetime.timedelta(hours=len(gait_df)-1)
+    )
     gait_df['time'] = times
     return gait_df[gait_columns]
 

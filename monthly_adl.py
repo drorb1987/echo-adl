@@ -35,7 +35,9 @@ def get_total_status(d: dict) -> int:
     """
     statuses = [d[key] for key in d]
     status = GREEN
-    if RED in statuses or RED_UP in statuses or RED_DOWN in statuses:
+    if all(s == GRAY for s in statuses):
+        status = GRAY
+    elif RED in statuses or RED_UP in statuses or RED_DOWN in statuses:
         status = RED
     elif YELLOW in statuses or YELLOW_DOWN in statuses or YELLOW_UP in statuses:
         status = YELLOW
@@ -58,10 +60,12 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     mean = analyse_param.mean()
     std = analyse_param.std()
     status = GREEN
-    if not std or pd.isna(std):
-        return int(status)
+    if not len(analyse_param.dropna()) or pd.isna(std):
+        status = GRAY
+    elif not std:
+        status = GREEN
     # put the rolling parameters in json
-    if all(analyse_param[-2:] > mean + std_upper_th * std):
+    elif all(analyse_param[-2:] > mean + std_upper_th * std):
         status = RED_UP
     elif all(analyse_param[-3:] > mean + std_lower_th * std) or analyse_param.iloc[-1] > mean + std_upper_th * std:
         status = YELLOW_UP
@@ -85,11 +89,14 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
     parameters = get_parameters()
     num_th = parameters["Thresholds"]["NUM_TH"]
     status = GREEN
-    number = analyse_param[-10:].sum()
-    if 0 < number < num_th:
-        status = YELLOW
-    elif number >= num_th:
-        status = RED
+    if not len(analyse_param.dropna()):
+        status = GRAY
+    else:
+        number = analyse_param[-10:].sum()
+        if 0 < number < num_th:
+            status = YELLOW
+        elif number >= num_th:
+            status = RED
     # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
