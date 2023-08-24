@@ -100,7 +100,7 @@ def warp_respiration_df(res: dict) -> pd.DataFrame:
     return respiration_df[respiration_columns]
 
 # change the number of hours
-def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
+def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     """Warping the response to handle the gait and convert it to data-frame
 
     Args:
@@ -109,18 +109,6 @@ def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A data-frame to handle the gait
     """
-    try:
-        start_time = pd.to_datetime(time_dict['Day']['start'].date())
-        times = pd.date_range(
-            start=start_time,
-            freq='1H',
-            end=start_time+datetime.timedelta(hours=23)
-        )
-    except (KeyError, TypeError):
-        # no day night division
-        times = None
-        warnings.warn('No day/night division found!')
-
     gait_mapper = {
         'numberOfWalkingSessions': 'number_of_sessions',
         'totalWalkDistance': 'total_distance',
@@ -129,7 +117,17 @@ def warp_gait_df(res: dict, time_dict: dict, num_hours=24) -> pd.DataFrame:
     }
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
-    assert len(gait_df) == 24, "Need to be data for the last 24 hours"
+    try:
+    start_time = pd.to_datetime(time_dict['Day']['start'].date())
+    times = pd.date_range(
+        start=start_time,
+        freq='1H',
+        end=start_time+datetime.timedelta(hours=len(gait_df)-1)
+    )
+    except (KeyError, TypeError):
+        # no day night division
+        times = None
+        warnings.warn('No day/night division found!')
     gait_df['time'] = times
     return gait_df[gait_columns]
 
@@ -185,14 +183,18 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
 
-def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
+def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timestamp: str=None) -> None:
     """API for daily analysis ADL
 
     Args:
         device_id (str): device id
-        from_date (str): start date
         to_date (str): end date
+        from_date (str, optional): start date. Defaults to None.
+        timestamp (str, optional): the timestamp for writing the data, in case None it's the current timestamp. Defaults to None.
     """
+    if from_date is None:
+        from_date = str(pd.to_datetime(to_date).date() - pd.Timedelta(days=1))
+    
     querystring = {
         "deviceId": device_id,
         "from": from_date,
@@ -311,6 +313,9 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
 
             }
         }
+        
+        if timestamp:
+            analyse_params['timeStamp'] = timestamp
 
         analyse_body.append(analyse_params)
 
@@ -327,14 +332,19 @@ def daily_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         print("Posting to analysis report")
 
 
-def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
+def monthly_analyse_api(device_id: str, to_date: str, from_date: str=None, timestamp: str=None, debug=False) -> None:
     """API for monthly analysis ADL
 
     Args:
         device_id (str): device id
-        from_date (str): start date
         to_date (str): end date
+        from_date (str, optional): start date. Defaults to None.
+        timestamp (str, optional): the timestamp for writing the data, in case None it's the current timestamp. Defaults to None.
+        debug (bool, optional): flag for debug. Defaults to False.
     """
+    if from_date is None:
+        from_date = str(pd.to_datetime(to_date).date() - pd.Timedelta(days=30))
+
     querystring = {
         "deviceId": device_id,
         "from": from_date,
@@ -413,6 +423,9 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
         }
     }
 
+    if timestamp:
+        monthly_adl_params['timeStamp'] = timestamp
+
     response_post = requests.request(
         "POST",
         url_extended_statistics_report,
@@ -422,17 +435,34 @@ def monthly_analyse_api(device_id: str, from_date: str, to_date: str) -> None:
     assert response_post.status_code == 200, "There is a problem in posting the monthly statistics"
     print("Posting to monthly statistics report")
 
+    if debug:
+        response_month_get = requests.request(
+            "GET",
+            url_get_extended_statistics_report,
+            headers=headers,
+            params=querystring
+        )
+
+        print(response_month_get.text)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', help="The analysis mode, needs to be day/month", choices=['day', 'month'])
+    parser.add_argument('-m', '--mode', help="The analysis mode, needs to be day/month", choices=['day', 'month', 'both'], default='both')
     parser.add_argument('-d', '--device_id', help="The device ID")
-    parser.add_argument('-f', '--from_date', help="The date from which to start the analysis, needs to be in format yyyy-mm-dd")
-    parser.add_argument('-t', '--to_date', help="The date by which the analysis ends, needs to be in format yyyy-mm-dd")
+    parser.add_argument('-f', '--from_date', help="The date from which to start the analysis, needs to be in format yyyy-mm-dd", default=None)
+    parser.add_argument('-t', '--to_date', help="The date by which the analysis ends, needs to be in format yyyy-mm-dd", default=None)
+    parser.add_argument('--timestamp', default=None)
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    if args.mode == "day":
-        daily_analyse_api(args.device_id, args.from_date, args.to_date)
+    if args.to_date is None:
+        args.to_date = str(datetime.datetime.now().date())
+    if args.mode == "both":
+        daily_analyse_api(args.device_id, args.to_date, args.from_date, args.timestamp)
+        monthly_analyse_api(args.device_id, args.to_date, args.from_date, args.timestamp, args.debug)
+    elif args.mode == "day":
+        daily_analyse_api(args.device_id, args.to_date, args.from_date, args.timestamp)
     elif args.mode == "month":
-        monthly_analyse_api(args.device_id, args.from_date, args.to_date)
+        monthly_analyse_api(args.device_id, args.to_date, args.from_date, args.timestamp, args.debug)
     else:
-        print("The mode needs to be: day/month")
+        print("The mode needs to be: day/month/both")

@@ -9,6 +9,7 @@ YELLOW_DOWN = 3
 RED = 4
 RED_UP = 5
 RED_DOWN = 6
+GRAY = 7
 
 
 def get_parameters() -> dict:
@@ -34,7 +35,9 @@ def get_total_status(d: dict) -> int:
     """
     statuses = [d[key] for key in d]
     status = GREEN
-    if RED in statuses or RED_UP in statuses or RED_DOWN in statuses:
+    if all(s == GRAY for s in statuses):
+        status = GRAY
+    elif RED in statuses or RED_UP in statuses or RED_DOWN in statuses:
         status = RED
     elif YELLOW in statuses or YELLOW_DOWN in statuses or YELLOW_UP in statuses:
         status = YELLOW
@@ -57,10 +60,12 @@ def calc_statistics(analyse_param: pd.Series) -> int:
     mean = analyse_param.mean()
     std = analyse_param.std()
     status = GREEN
-    if not std or pd.isna(std):
-        return int(status)
+    if not len(analyse_param.dropna()) or pd.isna(std):
+        status = GRAY
+    elif not std:
+        status = GREEN
     # put the rolling parameters in json
-    if all(analyse_param[-2:] > mean + std_upper_th * std):
+    elif all(analyse_param[-2:] > mean + std_upper_th * std):
         status = RED_UP
     elif all(analyse_param[-3:] > mean + std_lower_th * std) or analyse_param.iloc[-1] > mean + std_upper_th * std:
         status = YELLOW_UP
@@ -84,11 +89,14 @@ def calc_statistics_by_number(analyse_param: pd.Series) -> int:
     parameters = get_parameters()
     num_th = parameters["Thresholds"]["NUM_TH"]
     status = GREEN
-    number = analyse_param[-10:].sum()
-    if 0 < number < num_th:
-        status = YELLOW
-    elif number >= num_th:
-        status = RED
+    if not len(analyse_param.dropna()):
+        status = GRAY
+    else:
+        number = analyse_param[-10:].sum()
+        if 0 < number < num_th:
+            status = YELLOW
+        elif number >= num_th:
+            status = RED
     # casting status to integer for writing the value to the api with the correct type
     return int(status)
 
@@ -158,10 +166,10 @@ def activity_level(analyse: pd.DataFrame) -> dict:
     quality['sedentary'] = calc_statistics(analyse["sedentaryDurationDuringDay"])
     quality['location_distribution'] = calc_location_distribution(analyse["locationDistributionDuringDay"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    quality['walking_total_distance'] = calc_statistics(gait_df[0])
-    quality['walking_speed'] = calc_statistics(gait_df[1])
-    quality['walking_sessions'] = calc_statistics(gait_df[2])
-    quality['walking_average_distance'] = calc_statistics(gait_df[3])
+    quality['walking_total_distance'] = calc_statistics(gait_df[0]) if len(gait_df) else GRAY
+    quality['walking_speed'] = calc_statistics(gait_df[1]) if len(gait_df) else GRAY
+    quality['walking_sessions'] = calc_statistics(gait_df[2]) if len(gait_df) else GRAY
+    quality['walking_average_distance'] = calc_statistics(gait_df[3]) if len(gait_df) else GRAY
     # walking_distance_per_session
     quality['activity_level'] = get_total_status(quality)
     return quality
@@ -199,7 +207,7 @@ def fall_risk(analyse: pd.DataFrame) -> dict:
     quality['night_restless'] = calc_statistics(analyse["restlessness"])
     quality['number_out_of_bed'] = calc_statistics(analyse["numberOfOutOfBedDuringNight"])
     gait_df = pd.DataFrame(analyse["gaitStatisticsDuringDay"].to_list())
-    quality['walking_speed'] = calc_statistics(gait_df[2]/gait_df[1])
+    quality['walking_speed'] = calc_statistics(gait_df[2]/gait_df[1]) if len(gait_df) else GRAY
     quality['fall_risk'] = get_total_status(quality) # add acute fall
     return quality
 
