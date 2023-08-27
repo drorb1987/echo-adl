@@ -55,6 +55,8 @@ def warp_sleep_df(res: dict) -> pd.DataFrame:
     }
     sleep_columns = ['start', 'stop', 'restless']
     sleep_df = pd.DataFrame(res['data']['sleepMonitoring']).rename(columns=sleep_mapper)
+    if not len(sleep_df):
+        return sleep_df
     return sleep_df[sleep_columns]
     
 
@@ -115,6 +117,8 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     }
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
+    if time_dict is None:
+        return gait_df
     start_time = pd.to_datetime(time_dict['Day']['start'].date())
     times = pd.date_range(
         start=start_time,
@@ -267,13 +271,13 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
             "data": {
                 "sleepDuration": night_sleep_duration,
                 "restlessness": night_restlessness,
-                "goToSleepTime": str(time_dict["Night"]["start"]),
-                "wakUpTime": str(time_dict["Night"]["end"]),
+                "goToSleepTime": str(time_dict["Night"]["start"]) if time_dict else None,
+                "wakUpTime": str(time_dict["Night"]["end"]) if time_dict else None,
                 "numberOfOutOfBedDuringNight": number_out_of_bed,
                 "durationOfOutOfBed": night_out_of_bed_duration,
                 "sleepDurationDuringDay": day_sleep_duration,
 
-                "locationDistributionOfOutOfBedDuringNight": dict(location_counter),
+                "locationDistributionOfOutOfBedDuringNight": dict(location_counter) if location_counter else None,
 
                 "averageNightlyRR": average_respiration,
                 "averageNightlyHR": average_heartrate,
