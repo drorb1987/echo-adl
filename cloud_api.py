@@ -57,6 +57,8 @@ def warp_sleep_df(res: dict) -> pd.DataFrame:
     }
     sleep_columns = ['start', 'stop', 'restless']
     sleep_df = pd.DataFrame(res['data']['sleepMonitoring']).rename(columns=sleep_mapper)
+    if not len(sleep_df):
+        return sleep_df
     return sleep_df[sleep_columns]
     
 
@@ -117,6 +119,8 @@ def warp_gait_df(res: dict, time_dict: dict) -> pd.DataFrame:
     }
     gait_columns = ['number_of_sessions', 'total_distance', 'total_time', 'activity', 'time']
     gait_df = pd.DataFrame(res['data']['gaitAnalysis']).rename(columns=gait_mapper)
+    if time_dict is None:
+        return gait_df
     try:
         start_time = pd.to_datetime(time_dict['Day']['start'].date())
         times = pd.date_range(
@@ -177,9 +181,9 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     start_time = []
     stop_time = []
     for i in range(len(df)-1):
-        if df.loc[i, 'type'] == 'VisitorsIn' and df.loc[i+1, 'type'] == 'VisitorsOut':
-            start_time.append(df.loc[i, 'date_time'])
-            stop_time.append(df.loc[i+1, 'date_time'])
+        if df['type'].iloc[i] == 'VisitorsIn' and df['type'].iloc[i+1] == 'VisitorsOut':
+            start_time.append(df['date_time'].iloc[i])
+            stop_time.append(df['date_time'].iloc[i+1])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
 
@@ -273,32 +277,18 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
         alone_time = daily_adl.get_total_alone_time(visitors_df, time_dict, 'Day')
 
         prev_res = res.copy()
-        # check that no issues will be caused by None
-        # what happens to goToSleepTime and wakeUpTime if no night is found?
-        # for now it returns some index but need to check edge cases
-        if location_counter is None:
-            loc_counter_return = None
-        else:
-            loc_counter_return = dict(location_counter)
-
-        if time_dict is None:
-            go_to_sleep_return = None
-            wake_up_return = None
-        else:
-            go_to_sleep_return = str(time_dict["Night"]["start"])
-            wake_up_return = str(time_dict["Night"]["end"])
         analyse_params = {
             "deviceId": device_id,
             "publicKey": public_key,
             "data": {
                 "sleepDuration": night_sleep_duration,
                 "restlessness": night_restlessness,
-                "goToSleepTime": go_to_sleep_return,
-                "wakUpTime": wake_up_return,
+                "goToSleepTime": str(time_dict["Night"]["start"]) if time_dict else None,
+                "wakUpTime": str(time_dict["Night"]["end"]) if time_dict else None,
                 "numberOfOutOfBedDuringNight": number_out_of_bed,
                 "durationOfOutOfBed": night_out_of_bed_duration,
                 "sleepDurationDuringDay": day_sleep_duration,
-                "locationDistributionOfOutOfBedDuringNight": loc_counter_return,
+                "locationDistributionOfOutOfBedDuringNight": dict(location_counter) if location_counter else None,
                 "averageNightlyRR": average_respiration,
                 "averageNightlyHR": average_heartrate,
                 "locationDistributionDuringDay": daily_location_distribution,
