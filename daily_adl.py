@@ -214,8 +214,7 @@ def get_day_night_times(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Dict[
     # get the dates from the dataframe and check that there is 1 or 2 dates
     dates = pd.to_datetime(pd.concat([df['start'], df['stop']]).dt.date.unique()).sort_values()
     if len(dates) > 2:
-        # dates = dates[-2:]
-        dates = dates[:2]
+        dates = dates[-2:]
     assert len(dates) <= 2, "There is more than 2 days"
 
     hours = making_hours_array(df, dates)
@@ -228,7 +227,6 @@ def get_day_night_times(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Dict[
 
     datetime_range = pd.date_range(start=date_start, periods=len(hours) + 1, end=date_end)
      
-    day_delta = (0, 1) if df.iloc[-1]['stop'].time() > datetime.time(12, 0, 0) else (-1, 0)
 
     # find the closest datetime to night start and night end from the sleep sessions
     night_start, night_end = find_closest_time(df, datetime_range[night_start_idx], datetime_range[night_end_idx])
@@ -239,8 +237,8 @@ def get_day_night_times(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Dict[
     }
 
     day_time = {
-        'start': night_end + datetime.timedelta(days=day_delta[0]),
-        'end': night_start + datetime.timedelta(days=day_delta[1])
+        'start': night_end,
+        'end': night_start + datetime.timedelta(days=1)
     }
 
     time_dict  = {

@@ -170,9 +170,9 @@ def warp_visitors_df(alerts_df: pd.DataFrame) -> pd.DataFrame:
     start_time = []
     stop_time = []
     for i in range(len(df)-1):
-        if df.loc[i, 'type'] == 'VisitorsIn' and df.loc[i+1, 'type'] == 'VisitorsOut':
-            start_time.append(df.loc[i, 'date_time'])
-            stop_time.append(df.loc[i+1, 'date_time'])
+        if df['type'].iloc[i] == 'VisitorsIn' and df['type'].iloc[i+1] == 'VisitorsOut':
+            start_time.append(df['date_time'].iloc[i])
+            stop_time.append(df['date_time'].iloc[i+1])
     return pd.DataFrame({'start': start_time, 'stop': stop_time})
 
 
