@@ -78,6 +78,8 @@ def warp_location_df(res: dict) -> pd.DataFrame:
     }
     location_columns = ['start', 'stop', 'location']
     location_df = pd.DataFrame(res['data']['locations']['objects']).rename(columns=location_mapper)
+    if not len(location_df):
+        return location_df
     return location_df[location_columns]
 
 

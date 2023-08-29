@@ -208,7 +208,8 @@ def day_night_update_df(df: pd.DataFrame, time_dict: dict) -> pd.DataFrame:
         rel_time = (df[start] >= time_dict[day_or_night]['start']) & (df[stop] <= time_dict[day_or_night]['end'])
         df.loc[rel_time, 'day_or_night'] = day_or_night
     if 'start' in df:
-        df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[s]') / (60.0 * pd.Timedelta(minutes=1))
+        # df['total_time'] = (df['stop'] - df['start']).astype('timedelta64[s]') / (60.0 * pd.Timedelta(minutes=1))
+        df['total_time'] = (df['stop'] - df['start']) / pd.Timedelta(hours=1)
     return df
 
 
