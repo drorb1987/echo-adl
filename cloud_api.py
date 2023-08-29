@@ -286,7 +286,7 @@ def daily_analyse_api(device_id: str, to_date: str, from_date: str=None, timesta
                 "sleepDuration": night_sleep_duration,
                 "restlessness": night_restlessness,
                 "goToSleepTime": str(time_dict["Night"]["start"]) if time_dict else None,
-                "wakUpTime": str(time_dict["Night"]["end"]) if time_dict else None,
+                "wakeUpTime": str(time_dict["Night"]["end"]) if time_dict else None,
                 "numberOfOutOfBedDuringNight": number_out_of_bed,
                 "durationOfOutOfBed": night_out_of_bed_duration,
                 "sleepDurationDuringDay": day_sleep_duration,
